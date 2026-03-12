@@ -1,6 +1,35 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
+import { useAuth } from '../store/authStore';
+
+const DEFAULT_QUICK_KEYWORDS = [
+  { label: '#서코', query: '서코', color: 'from-orange-400 to-red-500' },
+  { label: '#코믹월드', query: '코믹월드', color: 'from-red-400 to-rose-500' },
+  { label: '#C3AFA', query: 'C3AFA', color: 'from-yellow-400 to-orange-500' },
+  { label: '#블루아카이브', query: '블루아카이브', color: 'from-sky-400 to-blue-600' },
+  { label: '#스텔라이브', query: '스텔라이브', color: 'from-violet-400 to-purple-600' },
+  { label: '#원신', query: '원신', color: 'from-emerald-400 to-teal-500' },
+  { label: '#명일방주', query: '명일방주', color: 'from-slate-500 to-gray-700' },
+  { label: '#호요버스', query: '호요버스', color: 'from-indigo-400 to-violet-500' },
+  { label: '#아이돌', query: '아이돌', color: 'from-pink-400 to-rose-400' },
+  { label: '#뱅드림', query: '뱅드림', color: 'from-fuchsia-400 to-pink-500' },
+  { label: '#프로세카', query: '프로세카', color: 'from-cyan-400 to-sky-500' },
+  { label: '#우마무스메', query: '우마무스메', color: 'from-amber-400 to-yellow-500' },
+];
+
+const TAG_COLORS = [
+  'from-orange-400 to-red-500',
+  'from-sky-400 to-blue-600',
+  'from-violet-400 to-purple-600',
+  'from-emerald-400 to-teal-500',
+  'from-pink-400 to-rose-400',
+  'from-fuchsia-400 to-pink-500',
+  'from-cyan-400 to-sky-500',
+  'from-amber-400 to-yellow-500',
+  'from-indigo-400 to-violet-500',
+  'from-red-400 to-rose-500',
+];
 
 const BANNERS = [
   {
@@ -64,6 +93,7 @@ function extractCreators(goods) {
 }
 
 export default function ShopPage() {
+  const { isAuthenticated } = useAuth();
   const [goods, setGoods] = useState([]);
   const [preorderGoods, setPreorderGoods] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +102,16 @@ export default function ShopPage() {
   const [activeTab, setActiveTab] = useState('홈');
   const [bannerIdx, setBannerIdx] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [keywords, setKeywords] = useState(() => {
+    try {
+      const saved = localStorage.getItem('quickKeywords');
+      return saved ? JSON.parse(saved) : DEFAULT_QUICK_KEYWORDS;
+    } catch {
+      return DEFAULT_QUICK_KEYWORDS;
+    }
+  });
+  const [editingKeywords, setEditingKeywords] = useState(false);
+  const [newKeyword, setNewKeyword] = useState('');
 
   const selectedCreator = searchParams.get('creator') || '';
   const searchQuery = searchParams.get('q') || '';
@@ -134,6 +174,29 @@ export default function ShopPage() {
   const currBanner = BANNERS[bannerIdx];
   const nextBanner = BANNERS[(bannerIdx + 1) % BANNERS.length];
 
+  const saveKeywords = (updated) => {
+    setKeywords(updated);
+    localStorage.setItem('quickKeywords', JSON.stringify(updated));
+  };
+
+  const addKeyword = () => {
+    const text = newKeyword.trim().replace(/^#/, '');
+    if (!text) return;
+    const label = `#${text}`;
+    if (keywords.some((k) => k.label === label)) return;
+    const color = TAG_COLORS[keywords.length % TAG_COLORS.length];
+    saveKeywords([...keywords, { label, query: text, color }]);
+    setNewKeyword('');
+  };
+
+  const removeKeyword = (label) => {
+    saveKeywords(keywords.filter((k) => k.label !== label));
+  };
+
+  const resetKeywords = () => {
+    saveKeywords(DEFAULT_QUICK_KEYWORDS);
+  };
+
   const selectCreator = (username) => {
     if (selectedCreator === username) {
       setSearchParams({});
@@ -144,6 +207,137 @@ export default function ShopPage() {
 
   return (
     <div>
+      {/* ===== 전역 배너 캐러셀 ===== */}
+      <div className="flex gap-3 mb-5 items-stretch">
+        <div className="hidden lg:block w-44 flex-shrink-0">
+          <div
+            className={`h-52 rounded-2xl bg-gradient-to-br ${prevBanner.gradient} p-4 flex flex-col justify-end opacity-60 cursor-pointer hover:opacity-75 transition-opacity`}
+            onClick={() => setBannerIdx((bannerIdx - 1 + BANNERS.length) % BANNERS.length)}
+          >
+            <p className="text-white text-xs font-semibold line-clamp-2">{prevBanner.title}</p>
+          </div>
+        </div>
+
+        <div className={`flex-1 rounded-2xl bg-gradient-to-br ${currBanner.gradient} p-7 relative overflow-hidden min-h-52`}>
+          <div className="relative z-10">
+            <p className="text-white/70 text-xs font-medium mb-1 uppercase tracking-widest">SPECIAL</p>
+            <div className="text-5xl mb-3">{currBanner.emoji}</div>
+            <h2 className="text-white text-xl font-bold mb-1.5 leading-snug">{currBanner.title}</h2>
+            <p className="text-white/75 text-sm mb-1">{currBanner.subtitle}</p>
+            <p className="text-white/55 text-xs">{currBanner.date}</p>
+          </div>
+          <div className="absolute bottom-4 right-4 flex items-center gap-1.5">
+            <button
+              onClick={() => setBannerIdx((bannerIdx - 1 + BANNERS.length) % BANNERS.length)}
+              className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/35 text-white text-sm flex items-center justify-center"
+            >‹</button>
+            <span className="text-white/70 text-xs px-1">{bannerIdx + 1} / {BANNERS.length}</span>
+            <button
+              onClick={() => setBannerIdx((bannerIdx + 1) % BANNERS.length)}
+              className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/35 text-white text-sm flex items-center justify-center"
+            >›</button>
+          </div>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+            {BANNERS.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setBannerIdx(i)}
+                className={`h-1.5 rounded-full transition-all ${i === bannerIdx ? 'bg-white w-4' : 'bg-white/40 w-1.5'}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="hidden lg:block w-44 flex-shrink-0">
+          <div
+            className={`h-52 rounded-2xl bg-gradient-to-br ${nextBanner.gradient} p-4 flex flex-col justify-end opacity-60 cursor-pointer hover:opacity-75 transition-opacity`}
+            onClick={() => setBannerIdx((bannerIdx + 1) % BANNERS.length)}
+          >
+            <p className="text-white text-xs font-semibold line-clamp-2">{nextBanner.title}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== 키워드 바로가기 ===== */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-2.5">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">바로가기</p>
+          {isAuthenticated && !editingKeywords && (
+            <button
+              onClick={() => setEditingKeywords(true)}
+              className="text-xs text-gray-400 hover:text-gray-600 px-2 py-0.5 rounded border border-gray-200 hover:border-gray-400 transition-colors"
+            >
+              편집
+            </button>
+          )}
+          {isAuthenticated && editingKeywords && (
+            <div className="flex items-center gap-1.5 ml-auto">
+              <button
+                onClick={resetKeywords}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+              >
+                초기화
+              </button>
+              <button
+                onClick={() => setEditingKeywords(false)}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-800 px-2.5 py-0.5 rounded border border-blue-300 hover:border-blue-500 transition-colors"
+              >
+                완료
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {keywords.map(({ label, query, color }) => (
+            <div key={label} className="relative group/tag">
+              <button
+                onClick={() => {
+                  if (editingKeywords) return;
+                  setMainTab('통판');
+                  setSearchParams({ q: query });
+                }}
+                className={`bg-gradient-to-r ${color} text-white text-xs font-bold px-3.5 py-1.5 rounded-full shadow-sm transition-all ${
+                  editingKeywords
+                    ? 'opacity-75 cursor-default pr-7'
+                    : 'hover:opacity-90 hover:shadow-md active:scale-95'
+                }`}
+              >
+                {label}
+              </button>
+              {editingKeywords && (
+                <button
+                  onClick={() => removeKeyword(label)}
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gray-700 text-white text-[10px] flex items-center justify-center hover:bg-red-500 transition-colors leading-none"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          ))}
+
+          {editingKeywords && (
+            <form
+              onSubmit={(e) => { e.preventDefault(); addKeyword(); }}
+              className="flex items-center gap-1"
+            >
+              <input
+                value={newKeyword}
+                onChange={(e) => setNewKeyword(e.target.value)}
+                placeholder="#키워드"
+                className="text-xs border border-dashed border-gray-300 rounded-full px-3 py-1.5 w-24 focus:outline-none focus:border-blue-400 placeholder:text-gray-300"
+              />
+              <button
+                type="submit"
+                className="text-xs font-bold text-white bg-gray-400 hover:bg-gray-600 px-2.5 py-1.5 rounded-full transition-colors"
+              >
+                +
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+
       {/* 메인 탭: 통판 / 사전수요조사 */}
       <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl w-fit">
         {[
@@ -212,57 +406,6 @@ export default function ShopPage() {
       {/* ========== 홈 탭 ========== */}
       {activeTab === '홈' && !searchQuery && (
         <>
-          {/* 배너 캐러셀 */}
-          <div className="flex gap-3 mb-8 items-stretch">
-            <div className="hidden lg:block w-52 flex-shrink-0">
-              <div
-                className={`h-60 rounded-2xl bg-gradient-to-br ${prevBanner.gradient} p-5 flex flex-col justify-end opacity-60 cursor-pointer hover:opacity-75 transition-opacity`}
-                onClick={() => setBannerIdx((bannerIdx - 1 + BANNERS.length) % BANNERS.length)}
-              >
-                <p className="text-white text-xs font-semibold line-clamp-2">{prevBanner.title}</p>
-              </div>
-            </div>
-
-            <div className={`flex-1 rounded-2xl bg-gradient-to-br ${currBanner.gradient} p-8 relative overflow-hidden min-h-60`}>
-              <div className="relative z-10">
-                <p className="text-white/70 text-xs font-medium mb-1 uppercase tracking-widest">SPECIAL</p>
-                <div className="text-6xl mb-4">{currBanner.emoji}</div>
-                <h2 className="text-white text-2xl font-bold mb-2 leading-snug">{currBanner.title}</h2>
-                <p className="text-white/75 text-sm mb-1">{currBanner.subtitle}</p>
-                <p className="text-white/55 text-xs">{currBanner.date}</p>
-              </div>
-              <div className="absolute bottom-5 right-5 flex items-center gap-1.5">
-                <button
-                  onClick={() => setBannerIdx((bannerIdx - 1 + BANNERS.length) % BANNERS.length)}
-                  className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/35 text-white text-sm flex items-center justify-center"
-                >‹</button>
-                <span className="text-white/70 text-xs px-1">{bannerIdx + 1} / {BANNERS.length}</span>
-                <button
-                  onClick={() => setBannerIdx((bannerIdx + 1) % BANNERS.length)}
-                  className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/35 text-white text-sm flex items-center justify-center"
-                >›</button>
-              </div>
-              <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-1.5">
-                {BANNERS.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setBannerIdx(i)}
-                    className={`h-1.5 rounded-full transition-all ${i === bannerIdx ? 'bg-white w-4' : 'bg-white/40 w-1.5'}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="hidden lg:block w-52 flex-shrink-0">
-              <div
-                className={`h-60 rounded-2xl bg-gradient-to-br ${nextBanner.gradient} p-5 flex flex-col justify-end opacity-60 cursor-pointer hover:opacity-75 transition-opacity`}
-                onClick={() => setBannerIdx((bannerIdx + 1) % BANNERS.length)}
-              >
-                <p className="text-white text-xs font-semibold line-clamp-2">{nextBanner.title}</p>
-              </div>
-            </div>
-          </div>
-
           {/* 크리에이터 아이콘 행 */}
           {loading ? (
             <div className="flex gap-6 mb-10">
