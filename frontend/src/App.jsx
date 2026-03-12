@@ -16,6 +16,7 @@ import AdminPendingPage from './pages/admin/AdminPendingPage';
 import AdminReviewPage from './pages/admin/AdminReviewPage';
 import AdminSellerApplicationsPage from './pages/admin/AdminSellerApplicationsPage';
 import AdminSellerReviewPage from './pages/admin/AdminSellerReviewPage';
+import ProfileEditPage from './pages/ProfileEditPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -67,6 +68,10 @@ const router = createBrowserRouter([
       {
         path: 'admin/seller-applications/:id/review',
         element: <RoleRoute role="ADMIN"><AdminSellerReviewPage /></RoleRoute>,
+      },
+      {
+        path: 'profile/edit',
+        element: <ProtectedRoute><ProfileEditPage /></ProtectedRoute>,
       },
       { path: 'unauthorized', element: <UnauthorizedPage /> },
       { path: '*', element: <NotFoundPage /> },

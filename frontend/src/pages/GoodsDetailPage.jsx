@@ -27,6 +27,30 @@ function getInitials(username) {
   return username.slice(0, 2).toUpperCase();
 }
 
+function SellerProfileCard({ username }) {
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    axiosClient.get(`/users/${username}/profile`)
+      .then((res) => setProfile(res.data.data))
+      .catch(() => {});
+  }, [username]);
+
+  return (
+    <div className="mt-8 flex flex-col items-center text-center py-8 px-6 bg-gray-50 rounded-2xl border border-gray-100">
+      <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${getAvatarGradient(username)} flex items-center justify-center text-white text-xl font-bold shadow-sm mb-3`}>
+        {getInitials(username)}
+      </div>
+      <p className="text-base font-semibold text-gray-800">{username}</p>
+      {profile?.bio ? (
+        <p className="mt-2 text-sm text-gray-500 leading-relaxed max-w-sm whitespace-pre-wrap">{profile.bio}</p>
+      ) : (
+        <p className="mt-2 text-sm text-gray-300">아직 자기소개가 없습니다.</p>
+      )}
+    </div>
+  );
+}
+
 export default function GoodsDetailPage() {
   const { id } = useParams();
   const [goods, setGoods] = useState(null);
@@ -106,14 +130,6 @@ export default function GoodsDetailPage() {
         )}
 
         <div className="p-7">
-          {/* 판매자 */}
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${getAvatarGradient(goods.sellerUsername)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
-              {getInitials(goods.sellerUsername)}
-            </div>
-            <span className="text-sm font-medium text-gray-600">{goods.sellerUsername}</span>
-          </div>
-
           <h1 className="text-2xl font-bold text-gray-800 leading-snug">{goods.name}</h1>
           {goods.description && (
             <div
@@ -273,6 +289,9 @@ export default function GoodsDetailPage() {
           )}
         </div>
       </div>
+
+      {/* 판매자 프로필 */}
+      <SellerProfileCard username={goods.sellerUsername} />
     </div>
   );
 }

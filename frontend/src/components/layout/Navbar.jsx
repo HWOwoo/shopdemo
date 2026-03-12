@@ -157,6 +157,10 @@ export default function Navbar() {
                   </>
                 )}
 
+                <Link to="/profile/edit" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                  <span className="text-base">✏️</span> 프로필 편집
+                </Link>
+
                 <div className="border-t border-gray-100 mt-1 pt-1">
                   <button
                     onClick={logout}

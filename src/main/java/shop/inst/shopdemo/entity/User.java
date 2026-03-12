@@ -35,6 +35,10 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    /** 자기소개 */
+    @Column(columnDefinition = "TEXT")
+    private String bio;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 }
