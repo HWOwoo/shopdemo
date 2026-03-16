@@ -69,9 +69,14 @@ export default function SellerDashboard() {
 
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">판매자 대시보드</h1>
-        <Link to="/seller/goods/new">
-          <Button>+ 상품 등록</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link to="/seller/orders">
+            <Button variant="outline">📦 주문 관리</Button>
+          </Link>
+          <Link to="/seller/goods/new">
+            <Button>+ 상품 등록</Button>
+          </Link>
+        </div>
       </div>
 
       {loading ? (

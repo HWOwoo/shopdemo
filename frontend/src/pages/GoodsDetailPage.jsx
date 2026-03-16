@@ -5,6 +5,7 @@ import { useAuth } from '../store/authStore';
 import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
 import Toast, { useToast } from '../components/ui/Toast';
+import PurchaseSection from '../components/purchase/PurchaseSection';
 
 const AVATAR_GRADIENTS = [
   'from-blue-400 to-purple-500',
@@ -55,8 +56,7 @@ export default function GoodsDetailPage() {
   const { id } = useParams();
   const [goods, setGoods] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [purchasing, setPurchasing] = useState(false);
-  const [showBankInfo, setShowBankInfo] = useState(false);
+  const [showPurchaseSection, setShowPurchaseSection] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
@@ -75,22 +75,10 @@ export default function GoodsDetailPage() {
       .finally(() => setLoading(false));
   }, [id, navigate]);
 
-  const handlePurchase = async () => {
+  const handlePurchase = () => {
     if (!isAuthenticated) { navigate('/login'); return; }
     if (!selectedOption) { show('옵션을 선택해주세요.', 'error'); return; }
-    if (goods.paymentType === 'BANK_TRANSFER') {
-      setShowBankInfo(true);
-      return;
-    }
-    setPurchasing(true);
-    try {
-      const res = await axiosClient.post(`/goods/${id}/purchase`);
-      show(res.data.data || '구매 요청이 접수되었습니다.', 'success');
-    } catch (err) {
-      show(err.response?.data?.message || '구매 요청에 실패했습니다.', 'error');
-    } finally {
-      setPurchasing(false);
-    }
+    setShowPurchaseSection((prev) => !prev);
   };
 
   if (loading) return <div className="flex justify-center py-16"><Spinner /></div>;
@@ -233,8 +221,8 @@ export default function GoodsDetailPage() {
 
             <div>
               {canPurchase && !optionSoldOut && (
-                <Button onClick={handlePurchase} disabled={purchasing || !selectedOption}>
-                  {purchasing ? '처리 중...' : goods.paymentType === 'BANK_TRANSFER' ? '입금 정보 보기' : '구매하기'}
+                <Button onClick={handlePurchase} disabled={!selectedOption}>
+                  구매 신청하기
                 </Button>
               )}
               {canPurchase && optionSoldOut && (
@@ -248,44 +236,17 @@ export default function GoodsDetailPage() {
             </div>
           </div>
 
-          {/* 계좌이체 입금 정보 */}
-          {showBankInfo && goods.paymentType === 'BANK_TRANSFER' && selectedOption && (
-            <div className="mt-4 p-5 bg-blue-50 rounded-xl border border-blue-200">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-blue-800 text-sm">입금 계좌 정보</h3>
-                <button
-                  onClick={() => setShowBankInfo(false)}
-                  className="text-blue-400 hover:text-blue-600 text-xs"
-                >
-                  닫기
-                </button>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-blue-600">선택 옵션</span>
-                  <span className="font-semibold text-gray-800">{selectedOption.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-600">은행</span>
-                  <span className="font-semibold text-gray-800">{goods.bankName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-600">계좌번호</span>
-                  <span className="font-semibold text-gray-800 font-mono">{goods.bankAccount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-600">예금주</span>
-                  <span className="font-semibold text-gray-800">{goods.bankAccountHolder}</span>
-                </div>
-                <div className="flex justify-between pt-2 border-t border-blue-200">
-                  <span className="text-blue-600">입금 금액</span>
-                  <span className="font-bold text-blue-700 text-base">{totalPrice.toLocaleString()}원</span>
-                </div>
-              </div>
-              <p className="mt-3 text-xs text-blue-500">
-                입금 후 판매자에게 연락하시면 배송이 진행됩니다.
-              </p>
-            </div>
+          {/* 구매 방법 선택 섹션 */}
+          {showPurchaseSection && isAuthenticated && selectedOption && (
+            <PurchaseSection
+              goods={goods}
+              selectedOption={selectedOption}
+              onClose={() => setShowPurchaseSection(false)}
+              onSuccess={(msg, type = 'success') => {
+                setShowPurchaseSection(false);
+                show(msg, type);
+              }}
+            />
           )}
         </div>
       </div>

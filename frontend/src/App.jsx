@@ -11,6 +11,7 @@ import CreateGoodsPage from './pages/seller/CreateGoodsPage';
 import SellerGoodsDetailPage from './pages/seller/SellerGoodsDetailPage';
 import SellerApplyPage from './pages/seller/SellerApplyPage';
 import EditGoodsPage from './pages/seller/EditGoodsPage';
+import SellerOrdersPage from './pages/seller/SellerOrdersPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminPendingPage from './pages/admin/AdminPendingPage';
 import AdminReviewPage from './pages/admin/AdminReviewPage';
@@ -48,6 +49,10 @@ const router = createBrowserRouter([
       {
         path: 'seller/goods/:id/edit',
         element: <RoleRoute role="SELLER"><EditGoodsPage /></RoleRoute>,
+      },
+      {
+        path: 'seller/orders',
+        element: <RoleRoute role="SELLER"><SellerOrdersPage /></RoleRoute>,
       },
       {
         path: 'admin/dashboard',

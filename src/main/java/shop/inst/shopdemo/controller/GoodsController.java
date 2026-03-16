@@ -11,9 +11,12 @@ import org.springframework.web.bind.annotation.*;
 import shop.inst.shopdemo.dto.common.ApiResponse;
 import shop.inst.shopdemo.dto.goods.CreateGoodsRequest;
 import shop.inst.shopdemo.dto.goods.GoodsResponse;
+import shop.inst.shopdemo.dto.order.CreateOrderRequest;
+import shop.inst.shopdemo.dto.order.OrderResponse;
 import shop.inst.shopdemo.entity.enums.GoodsType;
 import shop.inst.shopdemo.security.UserPrincipal;
 import shop.inst.shopdemo.service.GoodsService;
+import shop.inst.shopdemo.service.OrderService;
 
 import java.util.List;
 
@@ -23,6 +26,7 @@ import java.util.List;
 public class GoodsController {
 
     private final GoodsService goodsService;
+    private final OrderService orderService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<GoodsResponse>>> getApprovedGoods(
@@ -81,7 +85,13 @@ public class GoodsController {
     }
 
     @PostMapping("/{id}/purchase")
-    public ResponseEntity<ApiResponse<String>> purchase(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(goodsService.purchaseGoods(id)));
+    public ResponseEntity<ApiResponse<OrderResponse>> purchase(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long id,
+            @RequestBody CreateOrderRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                orderService.createOrder(principal.getUsername(), id, request)
+        ));
     }
 }
