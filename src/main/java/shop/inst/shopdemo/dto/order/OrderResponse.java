@@ -16,7 +16,7 @@ public class OrderResponse {
 
     private Long goodsId;
     private String goodsName;
-    private String optionName;
+    private java.util.List<OrderItemResponse> items;
 
     private Long buyerId;
     private String buyerUsername;
@@ -39,6 +39,10 @@ public class OrderResponse {
     private String deliveryMemo;
 
     private BigDecimal totalPrice;
+
+    private String courierName;
+    private String trackingNumber;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

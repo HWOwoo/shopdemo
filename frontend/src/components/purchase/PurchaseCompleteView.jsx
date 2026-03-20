@@ -7,7 +7,7 @@ function maskName(name) {
   return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1];
 }
 
-export default function PurchaseCompleteView({ goods, totalPrice, orderNumber, onClose }) {
+export default function PurchaseCompleteView({ goods, totalPrice, orderNumber, items, onClose }) {
   const [copied, setCopied] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
@@ -37,16 +37,30 @@ export default function PurchaseCompleteView({ goods, totalPrice, orderNumber, o
           </h2>
 
           {/* 주문 요약 */}
-          <div className="flex flex-col gap-1 mb-5 text-sm">
+          <div className="flex flex-col gap-1 mb-4 text-sm">
             <div className="flex items-center gap-3">
               <span className="text-gray-400 w-16 shrink-0">주문번호</span>
               <span className="font-medium text-gray-700 font-mono">{orderNumber}</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-gray-400 w-16 shrink-0">입금금액</span>
-              <span className="font-bold text-red-500">{totalPrice.toLocaleString()}원</span>
+              <span className="font-bold text-red-500">{Number(totalPrice).toLocaleString()}원</span>
             </div>
           </div>
+
+          {/* 주문 항목 */}
+          {items && items.length > 0 && (
+            <div className="mb-4 border border-gray-100 rounded-xl overflow-hidden text-xs">
+              {items.map((item) => (
+                <div key={item.optionId} className="flex justify-between px-3 py-2 border-b border-gray-100 last:border-b-0">
+                  <span className="text-gray-600">{item.optionName} × {item.quantity}</span>
+                  <span className="font-medium text-gray-800">
+                    {Number(item.subtotal).toLocaleString()}원
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* 입금처 정보 */}
           <div className="border border-gray-200 rounded-xl p-4 mb-6">

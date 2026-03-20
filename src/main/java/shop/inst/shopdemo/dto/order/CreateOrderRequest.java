@@ -3,11 +3,13 @@ package shop.inst.shopdemo.dto.order;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 public class CreateOrderRequest {
-    private Long optionId;
-    private String optionName;
+
+    private List<OrderItemRequest> items;  // 옵션별 수량
+
     private String purchaseType;   // "DIRECT" | "PLATFORM"
     private String paymentMethod;  // 중개구매 결제수단
 

@@ -4,10 +4,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import shop.inst.shopdemo.dto.order.CreateOrderRequest;
+import shop.inst.shopdemo.dto.order.OrderItemResponse;
 import shop.inst.shopdemo.dto.order.OrderResponse;
 import shop.inst.shopdemo.entity.Goods;
 import shop.inst.shopdemo.entity.GoodsOption;
 import shop.inst.shopdemo.entity.Order;
+import shop.inst.shopdemo.entity.OrderItem;
 import shop.inst.shopdemo.entity.User;
 import shop.inst.shopdemo.entity.enums.GoodsStatus;
 import shop.inst.shopdemo.entity.enums.OrderStatus;
@@ -19,6 +21,7 @@ import shop.inst.shopdemo.repository.GoodsRepository;
 import shop.inst.shopdemo.repository.OrderRepository;
 import shop.inst.shopdemo.repository.UserRepository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,22 +46,17 @@ public class OrderService {
             throw new BadRequestException("구매할 수 없는 상품입니다.");
         }
 
-        GoodsOption option = null;
-        if (req.getOptionId() != null) {
-            option = goodsOptionRepository.findById(req.getOptionId())
-                    .orElse(null);
+        if (req.getItems() == null || req.getItems().isEmpty()) {
+            throw new BadRequestException("주문 항목이 없습니다.");
         }
 
         PurchaseType purchaseType = PurchaseType.valueOf(
                 req.getPurchaseType() != null ? req.getPurchaseType() : "DIRECT"
         );
 
-        String orderNumber = generateOrderNumber();
-
         Order order = Order.builder()
-                .orderNumber(orderNumber)
+                .orderNumber(generateOrderNumber())
                 .goods(goods)
-                .option(option)
                 .buyer(buyer)
                 .purchaseType(purchaseType)
                 .paymentMethod(req.getPaymentMethod())
@@ -76,6 +74,28 @@ public class OrderService {
                 .totalPrice(req.getTotalPrice())
                 .build();
 
+        // OrderItem 생성
+        for (var itemReq : req.getItems()) {
+            if (itemReq.getQuantity() <= 0) continue;
+            GoodsOption option = goodsOptionRepository.findById(itemReq.getOptionId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Option not found: " + itemReq.getOptionId()));
+            // 재고 검사 (null = 무제한)
+            if (option.getStock() != null && option.getStock() < itemReq.getQuantity()) {
+                throw new BadRequestException("'" + option.getName() + "' 재고가 부족합니다. (남은 재고: " + option.getStock() + "개)");
+            }
+            OrderItem item = OrderItem.builder()
+                    .order(order)
+                    .option(option)
+                    .quantity(itemReq.getQuantity())
+                    .unitPrice(option.getPrice())
+                    .build();
+            order.getItems().add(item);
+        }
+
+        if (order.getItems().isEmpty()) {
+            throw new BadRequestException("수량이 1개 이상인 항목이 없습니다.");
+        }
+
         return toResponse(orderRepository.save(order));
     }
 
@@ -85,6 +105,26 @@ public class OrderService {
         User seller = userRepository.findByUsername(sellerUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return orderRepository.findByGoodsSeller(seller).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // 구매자: 특정 굿즈에 대한 내 주문 이력
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getMyOrdersForGoods(String buyerUsername, Long goodsId) {
+        User buyer = userRepository.findByUsername(buyerUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return orderRepository.findByBuyerAndGoodsIdOrderByCreatedAtDesc(buyer, goodsId).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // 구매자: 내 구매 내역
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getOrdersForBuyer(String buyerUsername) {
+        User buyer = userRepository.findByUsername(buyerUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return orderRepository.findByBuyerOrderByCreatedAtDesc(buyer).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -111,6 +151,18 @@ public class OrderService {
         return toResponse(orderRepository.save(order));
     }
 
+    // 판매자: 송장 등록/수정
+    @Transactional
+    public OrderResponse updateTracking(String sellerUsername, Long orderId, String courierName, String trackingNumber) {
+        Order order = getOrderOwnedBySeller(sellerUsername, orderId);
+        if (order.getStatus() != OrderStatus.PAYMENT_CONFIRMED) {
+            throw new BadRequestException("입금 확인된 주문만 송장을 등록할 수 있습니다.");
+        }
+        order.setCourierName(courierName);
+        order.setTrackingNumber(trackingNumber);
+        return toResponse(orderRepository.save(order));
+    }
+
     private Order getOrderOwnedBySeller(String sellerUsername, Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("주문을 찾을 수 없습니다."));
@@ -129,13 +181,23 @@ public class OrderService {
         return candidate;
     }
 
-    private OrderResponse toResponse(Order o) {
+    public OrderResponse toResponse(Order o) {
+        List<OrderItemResponse> itemResponses = o.getItems().stream()
+                .map(i -> OrderItemResponse.builder()
+                        .optionId(i.getOption().getId())
+                        .optionName(i.getOption().getName())
+                        .quantity(i.getQuantity())
+                        .unitPrice(i.getUnitPrice())
+                        .subtotal(i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
+                        .build())
+                .toList();
+
         return OrderResponse.builder()
                 .id(o.getId())
                 .orderNumber(o.getOrderNumber())
                 .goodsId(o.getGoods().getId())
                 .goodsName(o.getGoods().getName())
-                .optionName(o.getOption() != null ? o.getOption().getName() : null)
+                .items(itemResponses)
                 .buyerId(o.getBuyer().getId())
                 .buyerUsername(o.getBuyer().getUsername())
                 .status(o.getStatus())
@@ -153,6 +215,8 @@ public class OrderService {
                 .addressDetail(o.getAddressDetail())
                 .deliveryMemo(o.getDeliveryMemo())
                 .totalPrice(o.getTotalPrice())
+                .courierName(o.getCourierName())
+                .trackingNumber(o.getTrackingNumber())
                 .createdAt(o.getCreatedAt())
                 .updatedAt(o.getUpdatedAt())
                 .build();

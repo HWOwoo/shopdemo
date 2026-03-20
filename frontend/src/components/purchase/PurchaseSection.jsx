@@ -20,25 +20,22 @@ const TABS = [
   },
 ];
 
-function generateOrderNumber() {
-  const a = Math.floor(100000 + Math.random() * 900000);
-  const b = Math.floor(10000000000 + Math.random() * 89999999999);
-  return `${a}-${b}`;
-}
-
-export default function PurchaseSection({ goods, selectedOption, onClose, onSuccess }) {
+export default function PurchaseSection({ goods, quantities, options, onClose, onSuccess }) {
   const [tab, setTab] = useState(null);
   const [completedOrder, setCompletedOrder] = useState(null);
 
-  const totalPrice =
-    Number(selectedOption?.price || goods.price) + Number(goods.deliveryFee || 0);
+  const itemsTotal = (options || []).reduce((sum, opt) => {
+    return sum + Number(opt.price) * (quantities[opt.id] || 0);
+  }, 0);
+  const totalPrice = itemsTotal + Number(goods.deliveryFee || 0);
 
-  const handleComplete = (msg, type = 'success') => {
+  const handleComplete = (result, type = 'success') => {
     if (type === 'error') {
-      onSuccess?.(msg, 'error');
+      onSuccess?.(result, 'error');
       return;
     }
-    setCompletedOrder({ orderNumber: generateOrderNumber(), totalPrice });
+    // result is the OrderResponse from backend
+    setCompletedOrder(result);
   };
 
   return (
@@ -47,8 +44,9 @@ export default function PurchaseSection({ goods, selectedOption, onClose, onSucc
       {completedOrder && (
         <PurchaseCompleteView
           goods={goods}
-          totalPrice={completedOrder.totalPrice}
+          totalPrice={completedOrder.totalPrice ?? totalPrice}
           orderNumber={completedOrder.orderNumber}
+          items={completedOrder.items}
           onClose={() => {
             setCompletedOrder(null);
             onClose?.();
@@ -102,7 +100,9 @@ export default function PurchaseSection({ goods, selectedOption, onClose, onSucc
           <div className="border-t border-gray-100">
             <PlatformPurchaseForm
               goods={goods}
-              selectedOption={selectedOption}
+              quantities={quantities}
+              options={options}
+              totalPrice={totalPrice}
               onSuccess={handleComplete}
             />
           </div>
@@ -112,7 +112,9 @@ export default function PurchaseSection({ goods, selectedOption, onClose, onSucc
           <div className="border-t border-gray-100">
             <DirectPurchaseForm
               goods={goods}
-              selectedOption={selectedOption}
+              quantities={quantities}
+              options={options}
+              totalPrice={totalPrice}
               onClose={onClose}
               onSuccess={handleComplete}
               embedded

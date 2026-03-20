@@ -12,6 +12,7 @@ import SellerGoodsDetailPage from './pages/seller/SellerGoodsDetailPage';
 import SellerApplyPage from './pages/seller/SellerApplyPage';
 import EditGoodsPage from './pages/seller/EditGoodsPage';
 import SellerOrdersPage from './pages/seller/SellerOrdersPage';
+import MyOrdersPage from './pages/MyOrdersPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminPendingPage from './pages/admin/AdminPendingPage';
 import AdminReviewPage from './pages/admin/AdminReviewPage';
@@ -73,6 +74,10 @@ const router = createBrowserRouter([
       {
         path: 'admin/seller-applications/:id/review',
         element: <RoleRoute role="ADMIN"><AdminSellerReviewPage /></RoleRoute>,
+      },
+      {
+        path: 'my/orders',
+        element: <ProtectedRoute><MyOrdersPage /></ProtectedRoute>,
       },
       {
         path: 'profile/edit',

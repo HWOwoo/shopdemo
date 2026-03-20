@@ -28,8 +28,9 @@ public class GoodsResponse {
     /** 옵션 목록 */
     private List<GoodsOptionResponse> options;
 
-    /** 모든 옵션 재고가 0일 때 true */
+    /** 모든 옵션 재고가 0이거나 수동 품절 처리 시 true */
     private boolean soldOut;
+    private boolean manualSoldOut;
 
     private BigDecimal deliveryFee;
 

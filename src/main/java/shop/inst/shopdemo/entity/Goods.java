@@ -79,6 +79,10 @@ public class Goods {
     @Builder.Default
     private Boolean copyrightEmailSent = false;
 
+    /** 수동 품절 처리 여부 */
+    @Builder.Default
+    private Boolean manualSoldOut = false;
+
     /** 판매 옵션 목록 (가격/재고 per option) */
     @OneToMany(mappedBy = "goods", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @OrderBy("id ASC")

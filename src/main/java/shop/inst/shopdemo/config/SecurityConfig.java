@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users/*/profile").permitAll()
                         .requestMatchers("/api/goods/my", "/api/goods/my/**").hasRole("SELLER")
                         .requestMatchers(HttpMethod.POST, "/api/goods").hasRole("SELLER")
+                        .requestMatchers(HttpMethod.GET, "/api/seller/orders/my", "/api/seller/orders/my/goods/**").authenticated()
                         .requestMatchers("/api/seller/orders", "/api/seller/orders/**").hasRole("SELLER")
                         .requestMatchers(HttpMethod.POST, "/api/goods/*/purchase").hasRole("BUYER")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

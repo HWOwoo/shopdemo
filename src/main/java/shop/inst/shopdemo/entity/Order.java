@@ -29,9 +29,9 @@ public class Order {
     @JoinColumn(name = "goods_id", nullable = false)
     private Goods goods;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "option_id")
-    private GoodsOption option;
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @Builder.Default
+    private java.util.List<OrderItem> items = new java.util.ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "buyer_id", nullable = false)
@@ -70,6 +70,10 @@ public class Order {
 
     // 중개구매 결제 수단
     private String paymentMethod;
+
+    // 송장 정보
+    private String courierName;
+    private String trackingNumber;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

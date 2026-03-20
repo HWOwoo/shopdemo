@@ -41,6 +41,29 @@ export default function SellerDashboard() {
     }
   };
 
+  const handleClose = async (id) => {
+    if (!confirm('판매를 종료하시겠습니까? 종료 후에는 되돌릴 수 없습니다.')) return;
+    try {
+      await axiosClient.put(`/goods/my/${id}/close`);
+      show('판매가 종료되었습니다.', 'success');
+      fetchGoods();
+    } catch (err) {
+      show(err.response?.data?.message || '처리에 실패했습니다.', 'error');
+    }
+  };
+
+  const handleToggleSoldOut = async (id, currentlySoldOut) => {
+    const msg = currentlySoldOut ? '품절 해제하시겠습니까?' : '품절 처리하시겠습니까?';
+    if (!confirm(msg)) return;
+    try {
+      await axiosClient.put(`/goods/my/${id}/soldout`);
+      show(currentlySoldOut ? '품절이 해제되었습니다.' : '품절 처리되었습니다.', 'success');
+      fetchGoods();
+    } catch (err) {
+      show(err.response?.data?.message || '처리에 실패했습니다.', 'error');
+    }
+  };
+
   return (
     <div>
       <Toast toast={toast} onClose={hide} />
@@ -129,11 +152,26 @@ export default function SellerDashboard() {
                   <td className="px-4 py-3 text-center text-gray-500">{g.requiresCopyrightPermission ? '필요' : '불필요'}</td>
                   <td className="px-4 py-3 text-center text-gray-400">{new Date(g.createdAt).toLocaleDateString('ko-KR')}</td>
                   <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
                       <Button size="sm" onClick={() => navigate(`/seller/goods/${g.id}`)}>
                         보기
                       </Button>
-                      {g.status !== 'APPROVED' && (
+                      {g.status === 'APPROVED' && (
+                        <Button size="sm" variant="secondary" onClick={() => handleToggleSoldOut(g.id, false)}>
+                          품절 처리
+                        </Button>
+                      )}
+                      {g.status === 'SOLDOUT' && (
+                        <Button size="sm" variant="secondary" onClick={() => handleToggleSoldOut(g.id, true)}>
+                          품절 해제
+                        </Button>
+                      )}
+                      {(g.status === 'APPROVED' || g.status === 'SOLDOUT') && (
+                        <Button size="sm" variant="danger" onClick={() => handleClose(g.id)}>
+                          판매 종료
+                        </Button>
+                      )}
+                      {g.status !== 'APPROVED' && g.status !== 'SOLDOUT' && g.status !== 'CLOSED' && (
                         <Button size="sm" variant="danger" onClick={() => handleDelete(g.id)}>
                           삭제
                         </Button>

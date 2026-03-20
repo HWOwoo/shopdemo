@@ -245,13 +245,40 @@ public class GoodsService {
         goodsRepository.delete(goods);
     }
 
-    public String purchaseGoods(Long id) {
+    /** 판매 종료 (CLOSED) */
+    @Transactional
+    public GoodsResponse closeGoods(String username, Long id) {
+        Goods goods = getOwnedGoods(username, id);
+        if (goods.getStatus() != GoodsStatus.APPROVED && goods.getStatus() != GoodsStatus.SOLDOUT) {
+            throw new BadRequestException("판매 중인 상품만 종료할 수 있습니다.");
+        }
+        goods.setStatus(GoodsStatus.CLOSED);
+        return toResponse(goodsRepository.save(goods));
+    }
+
+    /** 품절 처리 토글 (SOLDOUT ↔ APPROVED) */
+    @Transactional
+    public GoodsResponse toggleSoldOut(String username, Long id) {
+        Goods goods = getOwnedGoods(username, id);
+        if (goods.getStatus() == GoodsStatus.SOLDOUT) {
+            goods.setStatus(GoodsStatus.APPROVED);
+            goods.setManualSoldOut(false);
+        } else if (goods.getStatus() == GoodsStatus.APPROVED) {
+            goods.setStatus(GoodsStatus.SOLDOUT);
+            goods.setManualSoldOut(true);
+        } else {
+            throw new BadRequestException("판매 중이거나 품절 상태인 상품만 변경할 수 있습니다.");
+        }
+        return toResponse(goodsRepository.save(goods));
+    }
+
+    private Goods getOwnedGoods(String username, Long id) {
         Goods goods = goodsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Goods not found: " + id));
-        if (goods.getStatus() != GoodsStatus.APPROVED) {
-            throw new BadRequestException("Goods is not available for purchase");
+        if (!goods.getSeller().getUsername().equals(username)) {
+            throw new UnauthorizedException("권한이 없습니다.");
         }
-        return "Purchase functionality will be implemented soon. Goods: " + goods.getName();
+        return goods;
     }
 
     public GoodsResponse toResponse(Goods goods) {
@@ -266,9 +293,13 @@ public class GoodsService {
                         .build())
                 .toList();
 
-        // soldOut: 옵션이 있고, 모든 옵션의 재고가 0인 경우 (null = 제한없음 → 품절 아님)
+        // soldOut: 수동 품절 처리 or 모든 옵션 재고 0
+        boolean manualSoldOut = Boolean.TRUE.equals(goods.getManualSoldOut())
+                || goods.getStatus() == GoodsStatus.SOLDOUT;
         boolean soldOut;
-        if (optionResponses.isEmpty()) {
+        if (manualSoldOut) {
+            soldOut = true;
+        } else if (optionResponses.isEmpty()) {
             soldOut = goods.getStock() != null && goods.getStock() == 0;
         } else {
             boolean allHaveStock = optionResponses.stream().noneMatch(o -> o.getStock() == null);
@@ -293,6 +324,7 @@ public class GoodsService {
                 .price(displayPrice)
                 .options(optionResponses)
                 .soldOut(soldOut)
+                .manualSoldOut(manualSoldOut)
                 .deliveryFee(goods.getDeliveryFee())
                 .paymentType(goods.getPaymentType())
                 .bankName(goods.getBankName())

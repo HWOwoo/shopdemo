@@ -8,25 +8,27 @@ const PAYMENT_METHODS = [
   { key: 'tosspay', label: '토스페이', icon: '🔵', color: 'bg-[#0064FF] text-white' },
 ];
 
-export default function PlatformPurchaseForm({ goods, selectedOption, onSuccess }) {
+export default function PlatformPurchaseForm({ goods, quantities, options, totalPrice, onSuccess }) {
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const totalPrice =
-    Number(selectedOption?.price || goods.price) + Number(goods.deliveryFee || 0);
+  const selectedItems = (options || []).filter((opt) => (quantities[opt.id] || 0) > 0);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedMethod) return;
     setSubmitting(true);
     try {
-      await axiosClient.post(`/goods/${goods.id}/purchase`, {
-        optionId: selectedOption?.id,
+      const res = await axiosClient.post(`/goods/${goods.id}/purchase`, {
+        items: selectedItems.map((opt) => ({
+          optionId: opt.id,
+          quantity: quantities[opt.id],
+        })),
+        purchaseType: 'PLATFORM',
         paymentMethod: selectedMethod,
         totalPrice,
-        purchaseType: 'PLATFORM',
       });
-      onSuccess?.('안심거래 구매 신청이 완료되었습니다.');
+      onSuccess?.(res.data.data);
     } catch (err) {
       onSuccess?.(err.response?.data?.message || '구매 신청에 실패했습니다.', 'error');
     } finally {
@@ -50,12 +52,14 @@ export default function PlatformPurchaseForm({ goods, selectedOption, onSuccess 
 
       {/* 주문 금액 */}
       <div className="border border-gray-200 rounded-xl overflow-hidden text-sm">
-        <div className="flex justify-between px-4 py-2.5">
-          <span className="text-gray-600">총 상품금액</span>
-          <span className="font-medium text-gray-800">
-            {Number(selectedOption?.price || goods.price).toLocaleString()}원
-          </span>
-        </div>
+        {selectedItems.map((opt) => (
+          <div key={opt.id} className="flex justify-between px-4 py-2.5 border-b border-gray-100 last:border-b-0">
+            <span className="text-gray-600">{opt.name} × {quantities[opt.id]}</span>
+            <span className="font-medium text-gray-800">
+              {(Number(opt.price) * quantities[opt.id]).toLocaleString()}원
+            </span>
+          </div>
+        ))}
         <div className="flex justify-between px-4 py-2.5 border-t border-gray-100">
           <span className="text-gray-600">배송비</span>
           <span className="font-medium text-gray-800">
@@ -74,7 +78,7 @@ export default function PlatformPurchaseForm({ goods, selectedOption, onSuccess 
       <div>
         <p className="text-sm font-semibold text-gray-700 mb-3">결제 수단 선택</p>
         <div className="grid grid-cols-2 gap-2">
-          {PAYMENT_METHODS.map(({ key, label, icon, color }) => (
+          {PAYMENT_METHODS.map(({ key, label, icon }) => (
             <button
               key={key}
               type="button"

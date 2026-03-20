@@ -3,6 +3,108 @@ import axiosClient from '../../api/axiosClient';
 import Spinner from '../../components/ui/Spinner';
 import Toast, { useToast } from '../../components/ui/Toast';
 
+const COURIERS = ['CJ대한통운', '롯데택배', '한진택배', '우체국택배', '로젠택배', '경동택배', 'GS편의점택배', '기타'];
+
+function TrackingModal({ order, onClose, onSaved }) {
+  const [courierName, setCourierName] = useState(order.courierName || '');
+  const [trackingNumber, setTrackingNumber] = useState(order.trackingNumber || '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const address = [order.postalCode, order.address, order.addressDetail].filter(Boolean).join(' ');
+
+  const handleSave = async () => {
+    if (!courierName) { setError('택배사를 선택해 주세요.'); return; }
+    if (!trackingNumber.trim()) { setError('송장번호를 입력해 주세요.'); return; }
+    setSaving(true);
+    try {
+      const res = await axiosClient.put(`/seller/orders/${order.id}/tracking`, {
+        courierName,
+        trackingNumber: trackingNumber.trim(),
+      });
+      onSaved(res.data.data);
+    } catch (err) {
+      setError(err.response?.data?.message || '저장에 실패했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <h2 className="font-bold text-gray-800">송장 입력</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+        </div>
+
+        <div className="p-5 flex flex-col gap-4">
+          {/* 배송지 자동 입력 정보 (읽기 전용) */}
+          <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">수령자 정보 (자동 입력)</p>
+            <div className="flex gap-3">
+              <span className="text-gray-400 w-14 shrink-0">수령자</span>
+              <span className="font-medium text-gray-700">{order.recipientName || order.ordererName || '-'}</span>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-gray-400 w-14 shrink-0">연락처</span>
+              <span className="font-medium text-gray-700">{order.recipientPhone || order.ordererPhone || '-'}</span>
+            </div>
+            <div className="flex gap-3">
+              <span className="text-gray-400 w-14 shrink-0">주소</span>
+              <span className="font-medium text-gray-700">{address || '-'}</span>
+            </div>
+            {order.deliveryMemo && (
+              <div className="flex gap-3">
+                <span className="text-gray-400 w-14 shrink-0">메모</span>
+                <span className="text-gray-600">{order.deliveryMemo}</span>
+              </div>
+            )}
+          </div>
+
+          {/* 택배사 선택 */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">택배사</label>
+            <select
+              value={courierName}
+              onChange={(e) => setCourierName(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">택배사 선택</option>
+              {COURIERS.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 송장번호 */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">송장번호</label>
+            <input
+              type="text"
+              placeholder="송장번호 입력"
+              value={trackingNumber}
+              onChange={(e) => setTrackingNumber(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          {error && <p className="text-xs text-red-500">{error}</p>}
+        </div>
+
+        <div className="px-5 pb-5 flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-300 text-gray-600 text-sm rounded-xl hover:bg-gray-50 transition-colors">
+            취소
+          </button>
+          <button onClick={handleSave} disabled={saving} className="flex-[2] py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+            {saving ? '저장 중...' : '송장 등록'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const STATUS_LABEL = {
   PENDING_PAYMENT:  { label: '입금 대기', cls: 'bg-yellow-100 text-yellow-700' },
   PAYMENT_CONFIRMED:{ label: '입금 확인', cls: 'bg-green-100 text-green-700' },
@@ -49,7 +151,18 @@ function OrderDetailDrawer({ order, onClose, onConfirm, onCancel }) {
             <div className="space-y-2 text-sm">
               <Row label="주문번호" value={<span className="font-mono">{order.orderNumber}</span>} />
               <Row label="주문일시" value={new Date(order.createdAt).toLocaleString('ko-KR')} />
-              {order.optionName && <Row label="옵션" value={order.optionName} />}
+              {order.items && order.items.length > 0 && (
+                <div className="flex gap-3">
+                  <span className="text-gray-400 w-20 shrink-0">주문 항목</span>
+                  <div className="flex flex-col gap-0.5">
+                    {order.items.map((i) => (
+                      <span key={i.optionId} className="text-gray-700">
+                        {i.optionName} × {i.quantity} ({Number(i.subtotal).toLocaleString()}원)
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               <Row label="주문금액" value={<span className="font-bold text-indigo-600">{Number(order.totalPrice).toLocaleString()}원</span>} />
               <Row label="구매방식" value={<TypeBadge type={order.purchaseType} />} />
               {order.paymentMethod && <Row label="결제수단" value={order.paymentMethod} />}
@@ -114,7 +227,7 @@ function groupByGoods(orders) {
   return Array.from(map.values());
 }
 
-function GoodsOrderGroup({ group, onSelectOrder, onConfirm, onCancel, filterStatus }) {
+function GoodsOrderGroup({ group, onSelectOrder, onConfirm, onCancel, onOpenTracking, filterStatus }) {
   const [expanded, setExpanded] = useState(true);
 
   const filtered = filterStatus === 'ALL'
@@ -174,7 +287,11 @@ function GoodsOrderGroup({ group, onSelectOrder, onConfirm, onCancel, filterStat
                   <td className="px-4 py-3 font-mono text-xs text-gray-400">{order.orderNumber}</td>
                   <td className="px-4 py-3 font-medium text-gray-700">{order.buyerUsername}</td>
                   <td className="px-4 py-3 text-gray-500">{order.depositorName || '-'}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{order.optionName || '-'}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">
+                    {order.items && order.items.length > 0
+                      ? order.items.map((i) => `${i.optionName}×${i.quantity}`).join(', ')
+                      : '-'}
+                  </td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-800">
                     {Number(order.totalPrice).toLocaleString()}원
                   </td>
@@ -191,7 +308,19 @@ function GoodsOrderGroup({ group, onSelectOrder, onConfirm, onCancel, filterStat
                       </div>
                     )}
                     {order.status === 'PAYMENT_CONFIRMED' && (
-                      <button onClick={() => onCancel(order.id)} className="px-2.5 py-1 border border-red-200 text-red-400 text-xs rounded hover:bg-red-50 transition-colors">취소</button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onOpenTracking(order); }}
+                          className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                            order.trackingNumber
+                              ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                              : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                          }`}
+                        >
+                          {order.trackingNumber ? '송장 수정' : '송장 입력'}
+                        </button>
+                        <button onClick={() => onCancel(order.id)} className="px-2.5 py-1 border border-red-200 text-red-400 text-xs rounded hover:bg-red-50 transition-colors">취소</button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -208,6 +337,7 @@ export default function SellerOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [trackingOrder, setTrackingOrder] = useState(null);
   const [filterStatus, setFilterStatus] = useState('ALL');
   const { toast, show, hide } = useToast();
 
@@ -224,6 +354,7 @@ export default function SellerOrdersPage() {
   const updateOrder = (updated) => {
     setOrders((prev) => prev.map((o) => o.id === updated.id ? updated : o));
     setSelectedOrder((prev) => prev?.id === updated.id ? updated : prev);
+    setTrackingOrder((prev) => prev?.id === updated.id ? updated : prev);
   };
 
   const handleConfirm = async (orderId) => {
@@ -258,6 +389,17 @@ export default function SellerOrdersPage() {
   return (
     <div>
       <Toast toast={toast} onClose={hide} />
+      {trackingOrder && (
+        <TrackingModal
+          order={trackingOrder}
+          onClose={() => setTrackingOrder(null)}
+          onSaved={(updated) => {
+            updateOrder(updated);
+            setTrackingOrder(null);
+            show('송장이 등록되었습니다.', 'success');
+          }}
+        />
+      )}
       {selectedOrder && (
         <OrderDetailDrawer
           order={selectedOrder}
@@ -308,6 +450,7 @@ export default function SellerOrdersPage() {
               onSelectOrder={setSelectedOrder}
               onConfirm={handleConfirm}
               onCancel={handleCancel}
+              onOpenTracking={setTrackingOrder}
             />
           ))}
         </div>

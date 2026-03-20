@@ -84,6 +84,22 @@ public class GoodsController {
         return ResponseEntity.ok(ApiResponse.success("Goods deleted", null));
     }
 
+    @PutMapping("/my/{id}/close")
+    public ResponseEntity<ApiResponse<GoodsResponse>> closeGoods(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(goodsService.closeGoods(principal.getUsername(), id)));
+    }
+
+    @PutMapping("/my/{id}/soldout")
+    public ResponseEntity<ApiResponse<GoodsResponse>> toggleSoldOut(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(goodsService.toggleSoldOut(principal.getUsername(), id)));
+    }
+
     @PostMapping("/{id}/purchase")
     public ResponseEntity<ApiResponse<OrderResponse>> purchase(
             @AuthenticationPrincipal UserPrincipal principal,

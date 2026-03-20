@@ -125,14 +125,22 @@ export default function Navbar() {
 
                 {/* BUYER */}
                 {user?.role === 'BUYER' && (
-                  <Link to="/seller/apply" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                    <span className="text-base">🏪</span> 판매자 신청
-                  </Link>
+                  <>
+                    <Link to="/my/orders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">🧾</span> 구매 내역
+                    </Link>
+                    <Link to="/seller/apply" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">🏪</span> 판매자 신청
+                    </Link>
+                  </>
                 )}
 
                 {/* SELLER */}
                 {user?.role === 'SELLER' && (
                   <>
+                    <Link to="/my/orders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">🧾</span> 구매 내역
+                    </Link>
                     <Link to="/seller/dashboard" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <span className="text-base">📊</span> 판매자 대시보드
                     </Link>

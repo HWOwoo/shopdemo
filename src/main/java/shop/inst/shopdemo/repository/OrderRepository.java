@@ -17,5 +17,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // 구매자 기준: 내가 신청한 주문 전체
     List<Order> findByBuyerOrderByCreatedAtDesc(User buyer);
 
+    // 구매자 기준: 특정 굿즈에 대한 내 주문 이력
+    List<Order> findByBuyerAndGoodsIdOrderByCreatedAtDesc(User buyer, Long goodsId);
+
     boolean existsByOrderNumber(String orderNumber);
 }

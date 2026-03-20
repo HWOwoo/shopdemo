@@ -21,7 +21,7 @@ const INITIAL_FORM = {
   privacyAgreed: false,
 };
 
-export default function DirectPurchaseForm({ goods, selectedOption, onClose, onSuccess, embedded = false }) {
+export default function DirectPurchaseForm({ goods, quantities, options, totalPrice, onClose, onSuccess, embedded = false }) {
   const { user } = useAuth();
   const [form, setForm] = useState({
     ...INITIAL_FORM,
@@ -31,7 +31,7 @@ export default function DirectPurchaseForm({ goods, selectedOption, onClose, onS
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  const totalPrice = Number(selectedOption?.price || goods.price) + Number(goods.deliveryFee || 0);
+  const selectedItems = (options || []).filter((opt) => (quantities[opt.id] || 0) > 0);
 
   // 주문자정보와 동일 처리
   useEffect(() => {
@@ -65,9 +65,12 @@ export default function DirectPurchaseForm({ goods, selectedOption, onClose, onS
     if (!validate()) return;
     setSubmitting(true);
     try {
-      await axiosClient.post(`/goods/${goods.id}/purchase`, {
-        optionId: selectedOption?.id,
-        optionName: selectedOption?.name,
+      const res = await axiosClient.post(`/goods/${goods.id}/purchase`, {
+        items: selectedItems.map((opt) => ({
+          optionId: opt.id,
+          quantity: quantities[opt.id],
+        })),
+        purchaseType: 'DIRECT',
         depositorName: form.depositorName,
         depositorDate: form.depositorDate,
         ordererName: form.ordererName,
@@ -81,7 +84,7 @@ export default function DirectPurchaseForm({ goods, selectedOption, onClose, onS
         deliveryMemo: form.deliveryMemo,
         totalPrice,
       });
-      onSuccess?.('구매 신청이 완료되었습니다. 입금 후 배송이 진행됩니다.');
+      onSuccess?.(res.data.data);
     } catch (err) {
       onSuccess?.(err.response?.data?.message || '구매 신청에 실패했습니다.', 'error');
     } finally {
@@ -157,12 +160,14 @@ export default function DirectPurchaseForm({ goods, selectedOption, onClose, onS
             - 주문금액 <span className="text-red-500">*</span>
           </p>
           <div className="border border-gray-200 rounded-lg overflow-hidden text-sm">
-            <div className="flex justify-between px-4 py-2.5">
-              <span className="text-gray-600">총 상품금액</span>
-              <span className="font-medium text-gray-800">
-                {Number(selectedOption?.price || goods.price).toLocaleString()}원
-              </span>
-            </div>
+            {selectedItems.map((opt) => (
+              <div key={opt.id} className="flex justify-between px-4 py-2.5 border-b border-gray-100 last:border-b-0">
+                <span className="text-gray-600">{opt.name} × {quantities[opt.id]}</span>
+                <span className="font-medium text-gray-800">
+                  {(Number(opt.price) * quantities[opt.id]).toLocaleString()}원
+                </span>
+              </div>
+            ))}
             <div className="flex justify-between px-4 py-2.5 border-t border-gray-100">
               <span className="text-gray-600">배송비</span>
               <span className="font-medium text-gray-800">
