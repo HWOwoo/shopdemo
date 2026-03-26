@@ -68,6 +68,28 @@ public class OrderController {
         ));
     }
 
+    // 구매자: 수령 확인
+    @PutMapping("/my/{orderId}/confirm-delivery")
+    public ResponseEntity<ApiResponse<OrderResponse>> confirmDelivery(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long orderId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                orderService.confirmDelivery(principal.getUsername(), orderId)
+        ));
+    }
+
+    // 구매자: 주문 취소
+    @PutMapping("/my/{orderId}/cancel")
+    public ResponseEntity<ApiResponse<OrderResponse>> cancelOrderByBuyer(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long orderId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                orderService.cancelOrderByBuyer(principal.getUsername(), orderId)
+        ));
+    }
+
     // 구매자: 특정 굿즈 구매 이력
     @GetMapping("/my/goods/{goodsId}")
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getMyOrdersForGoods(
