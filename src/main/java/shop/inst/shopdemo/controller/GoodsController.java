@@ -104,7 +104,7 @@ public class GoodsController {
     public ResponseEntity<ApiResponse<OrderResponse>> purchase(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long id,
-            @RequestBody CreateOrderRequest request
+            @Valid @RequestBody CreateOrderRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 orderService.createOrder(principal.getUsername(), id, request)

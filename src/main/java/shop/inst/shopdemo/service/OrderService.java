@@ -74,7 +74,7 @@ public class OrderService {
                 .totalPrice(req.getTotalPrice())
                 .build();
 
-        // OrderItem 생성
+        // OrderItem 생성 + 재고 차감
         for (var itemReq : req.getItems()) {
             if (itemReq.getQuantity() <= 0) continue;
             GoodsOption option = goodsOptionRepository.findById(itemReq.getOptionId())
@@ -82,6 +82,11 @@ public class OrderService {
             // 재고 검사 (null = 무제한)
             if (option.getStock() != null && option.getStock() < itemReq.getQuantity()) {
                 throw new BadRequestException("'" + option.getName() + "' 재고가 부족합니다. (남은 재고: " + option.getStock() + "개)");
+            }
+            // 재고 차감
+            if (option.getStock() != null) {
+                option.setStock(option.getStock() - itemReq.getQuantity());
+                goodsOptionRepository.save(option);
             }
             OrderItem item = OrderItem.builder()
                     .order(order)
@@ -95,6 +100,9 @@ public class OrderService {
         if (order.getItems().isEmpty()) {
             throw new BadRequestException("수량이 1개 이상인 항목이 없습니다.");
         }
+
+        // 모든 유한 재고 옵션이 0이 되면 자동 품절 처리
+        deductGoodsStock(goods);
 
         return toResponse(orderRepository.save(order));
     }
@@ -151,7 +159,7 @@ public class OrderService {
         return toResponse(orderRepository.save(order));
     }
 
-    // 판매자: 송장 등록/수정
+    // 판매자: 송장 등록 → SHIPPED 전환
     @Transactional
     public OrderResponse updateTracking(String sellerUsername, Long orderId, String courierName, String trackingNumber) {
         Order order = getOrderOwnedBySeller(sellerUsername, orderId);
@@ -160,7 +168,57 @@ public class OrderService {
         }
         order.setCourierName(courierName);
         order.setTrackingNumber(trackingNumber);
+        order.setStatus(OrderStatus.SHIPPED);
         return toResponse(orderRepository.save(order));
+    }
+
+    // 구매자: 수령 확인 → DELIVERED 전환
+    @Transactional
+    public OrderResponse confirmDelivery(String buyerUsername, Long orderId) {
+        Order order = getOrderOwnedByBuyer(buyerUsername, orderId);
+        if (order.getStatus() != OrderStatus.SHIPPED) {
+            throw new BadRequestException("배송 중인 주문만 수령 확인할 수 있습니다.");
+        }
+        order.setStatus(OrderStatus.DELIVERED);
+        return toResponse(orderRepository.save(order));
+    }
+
+    // 구매자: 주문 취소 (입금 대기 또는 입금 확인 상태에서만 가능)
+    @Transactional
+    public OrderResponse cancelOrderByBuyer(String buyerUsername, Long orderId) {
+        Order order = getOrderOwnedByBuyer(buyerUsername, orderId);
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT
+                && order.getStatus() != OrderStatus.PAYMENT_CONFIRMED) {
+            throw new BadRequestException("배송이 시작된 주문은 취소할 수 없습니다.");
+        }
+        order.setStatus(OrderStatus.CANCELLED);
+        restoreStock(order);
+        return toResponse(orderRepository.save(order));
+    }
+
+    private Order getOrderOwnedByBuyer(String buyerUsername, Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("주문을 찾을 수 없습니다."));
+        if (!order.getBuyer().getUsername().equals(buyerUsername)) {
+            throw new BadRequestException("권한이 없습니다.");
+        }
+        return order;
+    }
+
+    private void restoreStock(Order order) {
+        for (OrderItem item : order.getItems()) {
+            GoodsOption option = item.getOption();
+            if (option.getStock() != null) {
+                option.setStock(option.getStock() + item.getQuantity());
+                goodsOptionRepository.save(option);
+            }
+        }
+        Goods goods = order.getGoods();
+        if (goods.getStatus() == GoodsStatus.SOLDOUT) {
+            goods.setStatus(GoodsStatus.APPROVED);
+            goods.setManualSoldOut(false);
+        }
+        deductGoodsStock(goods); // stock 합계 재계산
     }
 
     private Order getOrderOwnedBySeller(String sellerUsername, Long orderId) {
@@ -170,6 +228,21 @@ public class OrderService {
             throw new BadRequestException("권한이 없습니다.");
         }
         return order;
+    }
+
+    private void deductGoodsStock(Goods goods) {
+        List<GoodsOption> options = goods.getOptions();
+        // 유한 재고 옵션들의 합계 재계산
+        boolean hasUnlimited = options.stream().anyMatch(o -> o.getStock() == null);
+        int total = hasUnlimited ? Integer.MAX_VALUE
+                : options.stream().mapToInt(GoodsOption::getStock).sum();
+        goods.setStock(total);
+
+        // 모든 옵션이 유한 재고이고 합계가 0이면 자동 SOLDOUT
+        if (!hasUnlimited && total == 0 && goods.getStatus() == GoodsStatus.APPROVED) {
+            goods.setStatus(GoodsStatus.SOLDOUT);
+        }
+        goodsRepository.save(goods);
     }
 
     private String generateOrderNumber() {
