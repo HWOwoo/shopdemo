@@ -60,7 +60,7 @@ public class Goods {
 
     /** 판매 유형 (통판 / 사전수요조사) */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'SALE'")
+    @Column(nullable = false, length = 20)
     @Builder.Default
     private GoodsType goodsType = GoodsType.SALE;
 
