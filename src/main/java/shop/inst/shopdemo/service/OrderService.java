@@ -21,6 +21,8 @@ import shop.inst.shopdemo.repository.GoodsRepository;
 import shop.inst.shopdemo.repository.OrderRepository;
 import shop.inst.shopdemo.repository.UserRepository;
 
+import shop.inst.shopdemo.entity.enums.NotificationType;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -33,6 +35,7 @@ public class OrderService {
     private final GoodsRepository goodsRepository;
     private final GoodsOptionRepository goodsOptionRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public OrderResponse createOrder(String buyerUsername, Long goodsId, CreateOrderRequest req) {
@@ -145,7 +148,18 @@ public class OrderService {
             throw new BadRequestException("이미 처리된 주문입니다.");
         }
         order.setStatus(OrderStatus.PAYMENT_CONFIRMED);
-        return toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+
+        notificationService.create(
+                order.getBuyer(),
+                NotificationType.PAYMENT_CONFIRMED,
+                "입금이 확인되었습니다",
+                "'" + order.getGoods().getName() + "' 주문의 입금이 확인되었습니다.",
+                order.getId(),
+                order.getGoods().getId()
+        );
+
+        return toResponse(saved);
     }
 
     // 판매자: 주문 취소
@@ -156,7 +170,18 @@ public class OrderService {
             throw new BadRequestException("이미 취소된 주문입니다.");
         }
         order.setStatus(OrderStatus.CANCELLED);
-        return toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+
+        notificationService.create(
+                order.getBuyer(),
+                NotificationType.ORDER_CANCELLED,
+                "주문이 취소되었습니다",
+                "'" + order.getGoods().getName() + "' 주문이 판매자에 의해 취소되었습니다.",
+                order.getId(),
+                order.getGoods().getId()
+        );
+
+        return toResponse(saved);
     }
 
     // 판매자: 송장 등록 → SHIPPED 전환
@@ -169,7 +194,18 @@ public class OrderService {
         order.setCourierName(courierName);
         order.setTrackingNumber(trackingNumber);
         order.setStatus(OrderStatus.SHIPPED);
-        return toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+
+        notificationService.create(
+                order.getBuyer(),
+                NotificationType.ORDER_SHIPPED,
+                "배송이 시작되었습니다",
+                "'" + order.getGoods().getName() + "' 주문이 발송되었습니다. (택배사: " + courierName + ", 송장번호: " + trackingNumber + ")",
+                order.getId(),
+                order.getGoods().getId()
+        );
+
+        return toResponse(saved);
     }
 
     // 구매자: 수령 확인 → DELIVERED 전환
@@ -180,7 +216,19 @@ public class OrderService {
             throw new BadRequestException("배송 중인 주문만 수령 확인할 수 있습니다.");
         }
         order.setStatus(OrderStatus.DELIVERED);
-        return toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+
+        // 셀러에게 수령 확인 알림
+        notificationService.create(
+                order.getGoods().getSeller(),
+                NotificationType.ORDER_DELIVERED,
+                "구매자가 수령을 확인했습니다",
+                "'" + order.getGoods().getName() + "' 주문을 " + order.getBuyer().getUsername() + "님이 수령 확인했습니다.",
+                order.getId(),
+                order.getGoods().getId()
+        );
+
+        return toResponse(saved);
     }
 
     // 구매자: 주문 취소 (입금 대기 또는 입금 확인 상태에서만 가능)

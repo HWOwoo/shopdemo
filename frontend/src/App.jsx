@@ -19,6 +19,8 @@ import AdminReviewPage from './pages/admin/AdminReviewPage';
 import AdminSellerApplicationsPage from './pages/admin/AdminSellerApplicationsPage';
 import AdminSellerReviewPage from './pages/admin/AdminSellerReviewPage';
 import ProfileEditPage from './pages/ProfileEditPage';
+import NotificationsPage from './pages/NotificationsPage';
+import MyReviewsPage from './pages/MyReviewsPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -78,6 +80,14 @@ const router = createBrowserRouter([
       {
         path: 'my/orders',
         element: <ProtectedRoute><MyOrdersPage /></ProtectedRoute>,
+      },
+      {
+        path: 'my/reviews',
+        element: <ProtectedRoute><MyReviewsPage /></ProtectedRoute>,
+      },
+      {
+        path: 'notifications',
+        element: <ProtectedRoute><NotificationsPage /></ProtectedRoute>,
       },
       {
         path: 'profile/edit',
