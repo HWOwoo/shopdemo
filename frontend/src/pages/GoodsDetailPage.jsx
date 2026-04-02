@@ -125,7 +125,7 @@ export default function GoodsDetailPage() {
 
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors mb-6"
+        className="flex items-center gap-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors mb-4 sm:mb-6"
       >
         ← 뒤로가기
       </button>
@@ -136,16 +136,16 @@ export default function GoodsDetailPage() {
           <img
             src={previewOption.imageUrl}
             alt={previewOption.name}
-            className="w-full h-72 object-cover transition-opacity duration-200"
+            className="w-full h-56 sm:h-72 object-cover transition-opacity duration-200"
           />
         ) : (
-          <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center gap-2 text-gray-400">
+          <div className="w-full h-40 sm:h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center gap-2 text-gray-400">
             <span className="text-5xl">🛍</span>
           </div>
         )}
 
-        <div className="p-7">
-          <h1 className="text-2xl font-bold text-gray-800 leading-snug">{goods.name}</h1>
+        <div className="p-4 sm:p-7">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 leading-snug">{goods.name}</h1>
 
           {/* 구매 이력 알림 */}
           {myOrders.length > 0 && (
@@ -201,7 +201,7 @@ export default function GoodsDetailPage() {
                   return (
                     <div
                       key={opt.id}
-                      className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors ${
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-4 py-3 rounded-xl border-2 transition-colors gap-2 sm:gap-0 ${
                         qty > 0
                           ? 'border-indigo-500 bg-indigo-50'
                           : isSoldOut
@@ -304,7 +304,7 @@ export default function GoodsDetailPage() {
           )}
 
           {/* 총 결제금액 + 구매 버튼 */}
-          <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-gray-100 gap-3 sm:gap-0">
             <div>
               <p className="text-xs text-gray-400 mb-0.5">총 결제금액</p>
               <span className="text-2xl font-bold text-indigo-600">

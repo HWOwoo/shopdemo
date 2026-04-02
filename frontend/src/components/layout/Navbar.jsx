@@ -31,8 +31,10 @@ export default function Navbar() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
@@ -43,6 +45,12 @@ export default function Navbar() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  useEffect(() => {
+    if (mobileSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [mobileSearchOpen]);
 
   // 읽지 않은 알림 개수 폴링
   useEffect(() => {
@@ -67,6 +75,7 @@ export default function Navbar() {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/?q=${encodeURIComponent(searchQuery.trim())}`);
+      setMobileSearchOpen(false);
     }
   };
 
@@ -74,18 +83,18 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
-      <div className="max-w-screen-xl mx-auto px-6 h-14 flex items-center gap-4">
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-2 sm:gap-4">
 
         {/* 로고 */}
-        <Link to="/" className="flex items-center gap-2 flex-shrink-0">
+        <Link to="/" className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-xs">다</span>
           </div>
-          <span className="text-base font-bold text-gray-900 tracking-tight">다굿즈</span>
+          <span className="text-base font-bold text-gray-900 tracking-tight hidden xs:inline sm:inline">다굿즈</span>
         </Link>
 
-        {/* 검색창 */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-xs">
+        {/* 데스크탑 검색창 */}
+        <form onSubmit={handleSearch} className="hidden sm:block flex-1 max-w-xs">
           <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2">
             <span className="text-gray-400 text-sm">🔍</span>
             <input
@@ -99,6 +108,16 @@ export default function Navbar() {
         </form>
 
         <div className="flex-1" />
+
+        {/* 모바일 검색 버튼 */}
+        <button
+          onClick={() => setMobileSearchOpen((v) => !v)}
+          className="sm:hidden p-1.5 text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </button>
 
         {/* 셀러: 굿즈 등록 버튼 */}
         {isAuthenticated && user?.role === 'SELLER' && (
@@ -227,19 +246,45 @@ export default function Navbar() {
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <Link to="/login" className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Link to="/login" className="text-xs sm:text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">
               로그인
             </Link>
             <Link
               to="/register"
-              className="text-sm bg-indigo-600 text-white px-3.5 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
+              className="text-xs sm:text-sm bg-indigo-600 text-white px-2.5 sm:px-3.5 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
             >
               회원가입
             </Link>
           </div>
         )}
       </div>
+
+      {/* 모바일 검색창 (드롭다운) */}
+      {mobileSearchOpen && (
+        <div className="sm:hidden border-t border-gray-100 px-4 py-3 bg-white">
+          <form onSubmit={handleSearch}>
+            <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
+              <span className="text-gray-400 text-sm">🔍</span>
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="굿즈 검색"
+                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setMobileSearchOpen(false)}
+                className="text-gray-400 hover:text-gray-600 text-sm"
+              >
+                취소
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </header>
   );
 }

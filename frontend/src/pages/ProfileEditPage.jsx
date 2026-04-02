@@ -57,7 +57,7 @@ export default function ProfileEditPage() {
   if (loading) return <div className="flex justify-center py-16"><Spinner /></div>;
 
   return (
-    <div className="max-w-lg mx-auto mt-8">
+    <div className="max-w-lg mx-auto mt-4 sm:mt-8">
       <Toast toast={toast} onClose={hide} />
 
       <button

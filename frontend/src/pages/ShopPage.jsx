@@ -218,13 +218,13 @@ export default function ShopPage() {
           </div>
         </div>
 
-        <div className={`flex-1 rounded-2xl bg-gradient-to-br ${currBanner.gradient} p-7 relative overflow-hidden min-h-52`}>
+        <div className={`flex-1 rounded-2xl bg-gradient-to-br ${currBanner.gradient} p-5 sm:p-7 relative overflow-hidden min-h-40 sm:min-h-52`}>
           <div className="relative z-10">
-            <p className="text-white/70 text-xs font-medium mb-1 uppercase tracking-widest">SPECIAL</p>
-            <div className="text-5xl mb-3">{currBanner.emoji}</div>
-            <h2 className="text-white text-xl font-bold mb-1.5 leading-snug">{currBanner.title}</h2>
-            <p className="text-white/75 text-sm mb-1">{currBanner.subtitle}</p>
-            <p className="text-white/55 text-xs">{currBanner.date}</p>
+            <p className="text-white/70 text-[10px] sm:text-xs font-medium mb-1 uppercase tracking-widest">SPECIAL</p>
+            <div className="text-3xl sm:text-5xl mb-2 sm:mb-3">{currBanner.emoji}</div>
+            <h2 className="text-white text-base sm:text-xl font-bold mb-1 sm:mb-1.5 leading-snug">{currBanner.title}</h2>
+            <p className="text-white/75 text-xs sm:text-sm mb-1">{currBanner.subtitle}</p>
+            <p className="text-white/55 text-[10px] sm:text-xs">{currBanner.date}</p>
           </div>
           <div className="absolute bottom-4 right-4 flex items-center gap-1.5">
             <button
@@ -339,7 +339,7 @@ export default function ShopPage() {
       </div>
 
       {/* 메인 탭: 통판 / 사전수요조사 */}
-      <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 mb-4 sm:mb-6 bg-gray-100 p-1 rounded-xl w-fit">
         {[
           { key: '통판', label: '통판', icon: '🛍' },
           { key: '사전수요조사', label: '사전수요조사', icon: '📋' },
@@ -461,7 +461,7 @@ export default function ShopPage() {
 
       {/* ========== 검색 결과 ========== */}
       {searchQuery && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
           {searchFiltered.length === 0 ? (
             <p className="col-span-full text-sm text-gray-400 py-16 text-center">
               "{searchQuery}" 검색 결과가 없습니다.
@@ -518,7 +518,7 @@ export default function ShopPage() {
 
           {/* 굿즈 그리드 */}
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
               {Array.from({ length: 10 }).map((_, i) => (
                 <div key={i} className="animate-pulse">
                   <div className="h-44 bg-gray-200 rounded-xl mb-2" />
@@ -530,7 +530,7 @@ export default function ShopPage() {
           ) : creatorFiltered.length === 0 ? (
             <p className="text-sm text-gray-400 py-16 text-center">등록된 굿즈가 없습니다.</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
               {creatorFiltered.map((item) => <GoodsCard key={item.id} item={item} grid />)}
             </div>
           )}
@@ -645,8 +645,8 @@ function GoodsCard({ item, grid }) {
   const preview = item.options?.[0]?.shortDescription || stripHtml(item.description);
 
   return (
-    <Link to={`/goods/${item.id}`} className={`group ${grid ? '' : 'flex-shrink-0 w-48'}`}>
-      <div className="h-48 bg-gray-100 rounded-xl overflow-hidden mb-2.5">
+    <Link to={`/goods/${item.id}`} className={`group ${grid ? '' : 'flex-shrink-0 w-36 sm:w-48'}`}>
+      <div className="h-36 sm:h-48 bg-gray-100 rounded-xl overflow-hidden mb-2 sm:mb-2.5">
         {firstImage ? (
           <img src={firstImage} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
         ) : (
@@ -670,8 +670,8 @@ function SkeletonRow() {
   return (
     <div className="flex gap-4">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex-shrink-0 w-48 animate-pulse">
-          <div className="h-48 bg-gray-200 rounded-xl mb-2.5" />
+        <div key={i} className="flex-shrink-0 w-36 sm:w-48 animate-pulse">
+          <div className="h-36 sm:h-48 bg-gray-200 rounded-xl mb-2.5" />
           <div className="h-3 bg-gray-200 rounded mb-1.5 w-3/4" />
           <div className="h-3 bg-gray-100 rounded w-full" />
         </div>

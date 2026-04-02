@@ -263,7 +263,7 @@ export default function MyReviewsPage() {
     <div className="max-w-2xl mx-auto">
       <Toast toast={toast} onClose={hide} />
 
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">내 리뷰</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">내 리뷰</h1>
 
       {/* 리뷰 작성 가능한 상품 */}
       {reviewable.length > 0 && (

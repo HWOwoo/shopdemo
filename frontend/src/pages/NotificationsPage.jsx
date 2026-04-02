@@ -107,7 +107,7 @@ export default function NotificationsPage() {
       <Toast toast={toast} onClose={hide} />
 
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">알림</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">알림</h1>
         {unreadCount > 0 && (
           <button
             onClick={markAllAsRead}

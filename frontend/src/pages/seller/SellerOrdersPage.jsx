@@ -260,74 +260,128 @@ function GoodsOrderGroup({ group, onSelectOrder, onConfirm, onCancel, onOpenTrac
         <span className="text-gray-400 text-lg">{expanded ? '▲' : '▼'}</span>
       </button>
 
-      {/* 주문 목록 */}
+      {/* 주문 목록 - 데스크탑 */}
       {expanded && (
-        <div className="border-t border-gray-100 overflow-x-auto">
-          <table className="w-full text-sm min-w-[620px]">
-            <thead className="bg-gray-50 text-gray-400 text-xs uppercase">
-              <tr>
-                <th className="px-4 py-2.5 text-left">주문번호</th>
-                <th className="px-4 py-2.5 text-left">구매자</th>
-                <th className="px-4 py-2.5 text-left">입금자명</th>
-                <th className="px-4 py-2.5 text-left">옵션</th>
-                <th className="px-4 py-2.5 text-right">금액</th>
-                <th className="px-4 py-2.5 text-center">구매방식</th>
-                <th className="px-4 py-2.5 text-center">상태</th>
-                <th className="px-4 py-2.5 text-center">주문일</th>
-                <th className="px-4 py-2.5 text-center">액션</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map((order) => (
-                <tr
-                  key={order.id}
-                  className="hover:bg-indigo-50/40 cursor-pointer transition-colors"
-                  onClick={() => onSelectOrder(order)}
-                >
-                  <td className="px-4 py-3 font-mono text-xs text-gray-400">{order.orderNumber}</td>
-                  <td className="px-4 py-3 font-medium text-gray-700">{order.buyerUsername}</td>
-                  <td className="px-4 py-3 text-gray-500">{order.depositorName || '-'}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
-                    {order.items && order.items.length > 0
-                      ? order.items.map((i) => `${i.optionName}×${i.quantity}`).join(', ')
-                      : '-'}
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-800">
-                    {Number(order.totalPrice).toLocaleString()}원
-                  </td>
-                  <td className="px-4 py-3 text-center"><TypeBadge type={order.purchaseType} /></td>
-                  <td className="px-4 py-3 text-center"><StatusBadge status={order.status} /></td>
-                  <td className="px-4 py-3 text-center text-gray-400 text-xs">
-                    {new Date(order.createdAt).toLocaleDateString('ko-KR')}
-                  </td>
-                  <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                    {order.status === 'PENDING_PAYMENT' && (
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button onClick={() => onConfirm(order.id)} className="px-2.5 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors">입금확인</button>
-                        <button onClick={() => onCancel(order.id)} className="px-2.5 py-1 border border-gray-300 text-gray-500 text-xs rounded hover:bg-gray-50 transition-colors">취소</button>
-                      </div>
-                    )}
-                    {order.status === 'PAYMENT_CONFIRMED' && (
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onOpenTracking(order); }}
-                          className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                            order.trackingNumber
-                              ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-                              : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                          }`}
-                        >
-                          {order.trackingNumber ? '송장 수정' : '송장 입력'}
-                        </button>
-                        <button onClick={() => onCancel(order.id)} className="px-2.5 py-1 border border-red-200 text-red-400 text-xs rounded hover:bg-red-50 transition-colors">취소</button>
-                      </div>
-                    )}
-                  </td>
+        <>
+          <div className="hidden md:block border-t border-gray-100 overflow-x-auto">
+            <table className="w-full text-sm min-w-[620px]">
+              <thead className="bg-gray-50 text-gray-400 text-xs uppercase">
+                <tr>
+                  <th className="px-4 py-2.5 text-left">주문번호</th>
+                  <th className="px-4 py-2.5 text-left">구매자</th>
+                  <th className="px-4 py-2.5 text-left">입금자명</th>
+                  <th className="px-4 py-2.5 text-left">옵션</th>
+                  <th className="px-4 py-2.5 text-right">금액</th>
+                  <th className="px-4 py-2.5 text-center">구매방식</th>
+                  <th className="px-4 py-2.5 text-center">상태</th>
+                  <th className="px-4 py-2.5 text-center">주문일</th>
+                  <th className="px-4 py-2.5 text-center">액션</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map((order) => (
+                  <tr
+                    key={order.id}
+                    className="hover:bg-indigo-50/40 cursor-pointer transition-colors"
+                    onClick={() => onSelectOrder(order)}
+                  >
+                    <td className="px-4 py-3 font-mono text-xs text-gray-400">{order.orderNumber}</td>
+                    <td className="px-4 py-3 font-medium text-gray-700">{order.buyerUsername}</td>
+                    <td className="px-4 py-3 text-gray-500">{order.depositorName || '-'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">
+                      {order.items && order.items.length > 0
+                        ? order.items.map((i) => `${i.optionName}×${i.quantity}`).join(', ')
+                        : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-gray-800">
+                      {Number(order.totalPrice).toLocaleString()}원
+                    </td>
+                    <td className="px-4 py-3 text-center"><TypeBadge type={order.purchaseType} /></td>
+                    <td className="px-4 py-3 text-center"><StatusBadge status={order.status} /></td>
+                    <td className="px-4 py-3 text-center text-gray-400 text-xs">
+                      {new Date(order.createdAt).toLocaleDateString('ko-KR')}
+                    </td>
+                    <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      {order.status === 'PENDING_PAYMENT' && (
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button onClick={() => onConfirm(order.id)} className="px-2.5 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors">입금확인</button>
+                          <button onClick={() => onCancel(order.id)} className="px-2.5 py-1 border border-gray-300 text-gray-500 text-xs rounded hover:bg-gray-50 transition-colors">취소</button>
+                        </div>
+                      )}
+                      {order.status === 'PAYMENT_CONFIRMED' && (
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onOpenTracking(order); }}
+                            className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                              order.trackingNumber
+                                ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            }`}
+                          >
+                            {order.trackingNumber ? '송장 수정' : '송장 입력'}
+                          </button>
+                          <button onClick={() => onCancel(order.id)} className="px-2.5 py-1 border border-red-200 text-red-400 text-xs rounded hover:bg-red-50 transition-colors">취소</button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 주문 목록 - 모바일 카드 */}
+          <div className="md:hidden border-t border-gray-100 divide-y divide-gray-100">
+            {filtered.map((order) => (
+              <div
+                key={order.id}
+                className="p-4 hover:bg-indigo-50/30 cursor-pointer transition-colors"
+                onClick={() => onSelectOrder(order)}
+              >
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={order.status} />
+                    <TypeBadge type={order.purchaseType} />
+                  </div>
+                  <span className="font-bold text-sm text-indigo-600">
+                    {Number(order.totalPrice).toLocaleString()}원
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                  <span className="font-mono text-gray-400">{order.orderNumber}</span>
+                  <span>·</span>
+                  <span className="font-medium text-gray-700">{order.buyerUsername}</span>
+                </div>
+                {order.items && order.items.length > 0 && (
+                  <p className="text-xs text-gray-400 mb-2 truncate">
+                    {order.items.map((i) => `${i.optionName}×${i.quantity}`).join(', ')}
+                  </p>
+                )}
+                <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  {order.status === 'PENDING_PAYMENT' && (
+                    <>
+                      <button onClick={() => onConfirm(order.id)} className="px-2.5 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700">입금확인</button>
+                      <button onClick={() => onCancel(order.id)} className="px-2.5 py-1 border border-gray-300 text-gray-500 text-xs rounded hover:bg-gray-50">취소</button>
+                    </>
+                  )}
+                  {order.status === 'PAYMENT_CONFIRMED' && (
+                    <>
+                      <button
+                        onClick={() => onOpenTracking(order)}
+                        className={`px-2.5 py-1 text-xs font-medium rounded ${
+                          order.trackingNumber ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-600 text-white'
+                        }`}
+                      >
+                        {order.trackingNumber ? '송장 수정' : '송장 입력'}
+                      </button>
+                      <button onClick={() => onCancel(order.id)} className="px-2.5 py-1 border border-red-200 text-red-400 text-xs rounded">취소</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -409,7 +463,7 @@ export default function SellerOrdersPage() {
         />
       )}
 
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">주문 관리</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">주문 관리</h1>
 
       {/* 상태 필터 */}
       <div className="flex gap-2 mb-6 flex-wrap">

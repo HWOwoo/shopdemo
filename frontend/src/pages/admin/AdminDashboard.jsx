@@ -24,9 +24,9 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">관리자 대시보드</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">관리자 대시보드</h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
         {[
           { label: '전체 회원', value: users.length, color: 'bg-indigo-50 text-indigo-700' },
           { label: '구매자', value: roleCounts.BUYER || 0, color: 'bg-blue-50 text-blue-700' },
@@ -49,7 +49,8 @@ export default function AdminDashboard() {
         </Link>
       </div>
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      {/* 데스크탑: 테이블 */}
+      <div className="hidden sm:block bg-white rounded-xl shadow overflow-hidden">
         <div className="px-5 py-4 border-b">
           <h2 className="font-semibold text-gray-700">전체 회원 목록</h2>
         </div>
@@ -79,6 +80,26 @@ export default function AdminDashboard() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* 모바일: 카드 리스트 */}
+      <div className="sm:hidden">
+        <h2 className="font-semibold text-gray-700 mb-3">전체 회원 목록</h2>
+        <div className="flex flex-col gap-2">
+          {users.map((u) => (
+            <div key={u.id} className="bg-white rounded-xl border border-gray-100 p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-800 truncate">{u.username}</p>
+                <p className="text-xs text-gray-400 truncate">{u.email}</p>
+              </div>
+              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 ${
+                u.role === 'ADMIN' ? 'bg-gray-800 text-white' :
+                u.role === 'SELLER' ? 'bg-purple-100 text-purple-700' :
+                'bg-blue-100 text-blue-700'
+              }`}>{u.role}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

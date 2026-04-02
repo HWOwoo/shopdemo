@@ -90,14 +90,14 @@ export default function SellerDashboard() {
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">판매자 대시보드</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">판매자 대시보드</h1>
         <div className="flex gap-2">
           <Link to="/seller/orders">
-            <Button variant="outline">📦 주문 관리</Button>
+            <Button variant="outline" size="sm" className="sm:text-sm">📦 주문 관리</Button>
           </Link>
           <Link to="/seller/goods/new">
-            <Button>+ 상품 등록</Button>
+            <Button size="sm" className="sm:text-sm">+ 상품 등록</Button>
           </Link>
         </div>
       </div>
@@ -114,7 +114,8 @@ export default function SellerDashboard() {
           <Link to="/seller/goods/new" className="text-indigo-600 hover:underline">상품 등록하기</Link>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow overflow-x-auto">
+        {/* 데스크탑: 테이블 */}
+        <div className="hidden md:block bg-white rounded-xl shadow overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
               <tr>
@@ -182,6 +183,45 @@ export default function SellerDashboard() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* 모바일: 카드 리스트 */}
+        <div className="md:hidden flex flex-col gap-3">
+          {goods.map((g) => (
+            <div key={g.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-800 text-sm truncate">{g.name}</p>
+                  {g.status === 'REJECTED' && g.rejectionReason && (
+                    <p className="text-xs text-red-500 mt-0.5 truncate">거절: {g.rejectionReason}</p>
+                  )}
+                </div>
+                <StatusBadge status={g.status} />
+              </div>
+              <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
+                <span className={`px-2 py-0.5 rounded-full font-medium ${g.goodsType === 'PREORDER' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>
+                  {g.goodsType === 'PREORDER' ? '수요조사' : '통판'}
+                </span>
+                <span className="font-semibold text-gray-700">{Number(g.price).toLocaleString()}원</span>
+                <span className="text-gray-400">{new Date(g.createdAt).toLocaleDateString('ko-KR')}</span>
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                <Button size="sm" onClick={() => navigate(`/seller/goods/${g.id}`)}>보기</Button>
+                {g.status === 'APPROVED' && (
+                  <Button size="sm" variant="secondary" onClick={() => handleToggleSoldOut(g.id, false)}>품절</Button>
+                )}
+                {g.status === 'SOLDOUT' && (
+                  <Button size="sm" variant="secondary" onClick={() => handleToggleSoldOut(g.id, true)}>품절 해제</Button>
+                )}
+                {(g.status === 'APPROVED' || g.status === 'SOLDOUT') && (
+                  <Button size="sm" variant="danger" onClick={() => handleClose(g.id)}>종료</Button>
+                )}
+                {g.status !== 'APPROVED' && g.status !== 'SOLDOUT' && g.status !== 'CLOSED' && (
+                  <Button size="sm" variant="danger" onClick={() => handleDelete(g.id)}>삭제</Button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
