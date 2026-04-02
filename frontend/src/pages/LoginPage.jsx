@@ -58,9 +58,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-12">
+    <div className="max-w-md mx-auto mt-6 sm:mt-12 px-1">
       {/* 로고 */}
-      <div className="text-center mb-8">
+      <div className="text-center mb-6 sm:mb-8">
         <Link to="/" className="inline-flex items-center gap-2 mb-4">
           <div className="w-11 h-11 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-sm">
             <span className="text-white font-bold text-lg">다</span>
@@ -70,7 +70,7 @@ export default function LoginPage() {
         <p className="text-sm text-gray-500">크리에이터와 팬을 잇는 굿즈 플랫폼</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-8">
         <h1 className="text-xl font-bold text-gray-800 mb-6">로그인</h1>
 
         {/* 소셜 로그인 */}

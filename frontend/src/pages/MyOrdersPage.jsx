@@ -203,7 +203,7 @@ export default function MyOrdersPage() {
     <div className="max-w-2xl mx-auto">
       <Toast toast={toast} onClose={hide} />
 
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">구매 내역</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">구매 내역</h1>
 
       {/* 필터 탭 */}
       <div className="flex gap-2 mb-6 flex-wrap">
