@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../store/authStore';
+import axiosClient from '../../api/axiosClient';
 
 const AVATAR_GRADIENTS = [
   'from-blue-400 to-purple-500',
@@ -30,6 +31,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -41,6 +43,19 @@ export default function Navbar() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // 읽지 않은 알림 개수 폴링
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const fetchCount = () => {
+      axiosClient.get('/notifications/unread-count')
+        .then((res) => setUnreadCount(res.data.data?.count ?? 0))
+        .catch(() => {});
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
 
   const logout = () => {
     dispatch({ type: 'LOGOUT' });
@@ -105,6 +120,23 @@ export default function Navbar() {
           </Link>
         )}
 
+        {/* 알림 벨 */}
+        {isAuthenticated && (
+          <Link
+            to="/notifications"
+            className="relative p-1.5 text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Link>
+        )}
+
         {/* 유저 영역 */}
         {isAuthenticated ? (
           <div className="relative" ref={menuRef}>
@@ -129,6 +161,9 @@ export default function Navbar() {
                     <Link to="/my/orders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <span className="text-base">🧾</span> 구매 내역
                     </Link>
+                    <Link to="/my/reviews" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">⭐</span> 내 리뷰
+                    </Link>
                     <Link to="/seller/apply" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <span className="text-base">🏪</span> 판매자 신청
                     </Link>
@@ -140,6 +175,9 @@ export default function Navbar() {
                   <>
                     <Link to="/my/orders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <span className="text-base">🧾</span> 구매 내역
+                    </Link>
+                    <Link to="/my/reviews" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">⭐</span> 내 리뷰
                     </Link>
                     <Link to="/seller/dashboard" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <span className="text-base">📊</span> 판매자 대시보드
@@ -165,6 +203,14 @@ export default function Navbar() {
                   </>
                 )}
 
+                <Link to="/notifications" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                  <span className="text-base">🔔</span> 알림
+                  {unreadCount > 0 && (
+                    <span className="ml-auto px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </Link>
                 <Link to="/profile/edit" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                   <span className="text-base">✏️</span> 프로필 편집
                 </Link>
