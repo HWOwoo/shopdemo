@@ -8,7 +8,12 @@
       "Bash(node:*)",
       "Bash(xargs grep:*)",
       "Bash(find C:/Users/nelap1234/IdeaProjects/shopdemo/src/main/java/shop/inst/shopdemo -name \"UserController.java\" 2>/dev/null; echo \"---\"; find C:/Users/nelap1234/IdeaProjects/shopdemo/src/main/java/shop/inst/shopdemo/dto -name \"*.java\" | sort)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)",
+      "Bash(git clean:*)",
+      "Bash(./gradlew build:*)",
+      "Bash(cd:*)"
     ]
   }
 }

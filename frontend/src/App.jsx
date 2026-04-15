@@ -18,9 +18,16 @@ import AdminPendingPage from './pages/admin/AdminPendingPage';
 import AdminReviewPage from './pages/admin/AdminReviewPage';
 import AdminSellerApplicationsPage from './pages/admin/AdminSellerApplicationsPage';
 import AdminSellerReviewPage from './pages/admin/AdminSellerReviewPage';
+import AdminCancelRequestsPage from './pages/admin/AdminCancelRequestsPage';
 import ProfileEditPage from './pages/ProfileEditPage';
 import NotificationsPage from './pages/NotificationsPage';
 import MyReviewsPage from './pages/MyReviewsPage';
+import MyPreordersPage from './pages/MyPreordersPage';
+import MyWishlistPage from './pages/MyWishlistPage';
+import SellerProfilePage from './pages/SellerProfilePage';
+import SellerSettlementsPage from './pages/seller/SellerSettlementsPage';
+import SellerPreordersPage from './pages/seller/SellerPreordersPage';
+import AdminSettlementsPage from './pages/admin/AdminSettlementsPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -33,6 +40,7 @@ const router = createBrowserRouter([
       { path: 'goods/:id', element: <GoodsDetailPage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
+      { path: 'seller/:username', element: <SellerProfilePage /> },
       {
         path: 'seller/apply',
         element: <ProtectedRoute><SellerApplyPage /></ProtectedRoute>,
@@ -58,6 +66,14 @@ const router = createBrowserRouter([
         element: <RoleRoute role="SELLER"><SellerOrdersPage /></RoleRoute>,
       },
       {
+        path: 'seller/settlements',
+        element: <RoleRoute role="SELLER"><SellerSettlementsPage /></RoleRoute>,
+      },
+      {
+        path: 'seller/preorders/:goodsId',
+        element: <RoleRoute role="SELLER"><SellerPreordersPage /></RoleRoute>,
+      },
+      {
         path: 'admin/dashboard',
         element: <RoleRoute role="ADMIN"><AdminDashboard /></RoleRoute>,
       },
@@ -78,12 +94,28 @@ const router = createBrowserRouter([
         element: <RoleRoute role="ADMIN"><AdminSellerReviewPage /></RoleRoute>,
       },
       {
+        path: 'admin/orders/cancel-requests',
+        element: <RoleRoute role="ADMIN"><AdminCancelRequestsPage /></RoleRoute>,
+      },
+      {
+        path: 'admin/settlements',
+        element: <RoleRoute role="ADMIN"><AdminSettlementsPage /></RoleRoute>,
+      },
+      {
         path: 'my/orders',
         element: <ProtectedRoute><MyOrdersPage /></ProtectedRoute>,
       },
       {
         path: 'my/reviews',
         element: <ProtectedRoute><MyReviewsPage /></ProtectedRoute>,
+      },
+      {
+        path: 'my/preorders',
+        element: <ProtectedRoute><MyPreordersPage /></ProtectedRoute>,
+      },
+      {
+        path: 'my/wishlist',
+        element: <ProtectedRoute><MyWishlistPage /></ProtectedRoute>,
       },
       {
         path: 'notifications',

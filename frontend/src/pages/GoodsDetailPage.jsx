@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../store/authStore';
+import { toggleWishlist, checkWishlistStatus } from '../api/wishlist';
 import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
 import Toast, { useToast } from '../components/ui/Toast';
@@ -39,10 +41,14 @@ function SellerProfileCard({ username }) {
 
   return (
     <div className="mt-8 flex flex-col items-center text-center py-8 px-6 bg-gray-50 rounded-2xl border border-gray-100">
-      <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${getAvatarGradient(username)} flex items-center justify-center text-white text-xl font-bold shadow-sm mb-3`}>
-        {getInitials(username)}
-      </div>
-      <p className="text-base font-semibold text-gray-800">{username}</p>
+      <Link to={`/seller/${username}`} className="group">
+        <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${getAvatarGradient(username)} flex items-center justify-center text-white text-xl font-bold shadow-sm mb-3 group-hover:ring-2 group-hover:ring-indigo-300 transition-all`}>
+          {getInitials(username)}
+        </div>
+      </Link>
+      <Link to={`/seller/${username}`} className="text-base font-semibold text-gray-800 hover:text-indigo-600 transition-colors">
+        {username}
+      </Link>
       {profile?.bio ? (
         <p className="mt-2 text-sm text-gray-500 leading-relaxed max-w-sm whitespace-pre-wrap">{profile.bio}</p>
       ) : (
@@ -52,9 +58,53 @@ function SellerProfileCard({ username }) {
   );
 }
 
+function GoodsImageGallery({ mainImage, additionalImages }) {
+  const allImages = [mainImage, ...additionalImages].filter(Boolean);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  if (allImages.length === 0) {
+    return (
+      <div className="w-full h-40 sm:h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center gap-2 text-gray-400">
+        <span className="text-5xl">🛍</span>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* 메인 이미지 */}
+      <img
+        src={allImages[activeIdx]}
+        alt={`이미지 ${activeIdx + 1}`}
+        className="w-full h-56 sm:h-72 object-cover transition-opacity duration-200"
+      />
+      {/* 썸네일 바 (추가 이미지 있을 때만) */}
+      {allImages.length > 1 && (
+        <div className="flex gap-2 p-3 overflow-x-auto bg-gray-50">
+          {allImages.map((img, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setActiveIdx(idx)}
+              className={`flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-colors ${
+                activeIdx === idx ? 'border-indigo-500' : 'border-transparent'
+              }`}
+            >
+              <img src={img} alt={`썸네일 ${idx + 1}`} className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const STATUS_LABEL = {
   PENDING_PAYMENT:   { text: '입금 대기 중', cls: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
   PAYMENT_CONFIRMED: { text: '입금 확인 완료', cls: 'text-green-700 bg-green-50 border-green-200' },
+  SHIPPED:           { text: '배송 중', cls: 'text-blue-700 bg-blue-50 border-blue-200' },
+  DELIVERED:         { text: '배송 완료', cls: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
+  CANCEL_REQUESTED:  { text: '취소 요청 중', cls: 'text-orange-700 bg-orange-50 border-orange-200' },
   CANCELLED:         { text: '취소됨', cls: 'text-gray-500 bg-gray-50 border-gray-200' },
 };
 
@@ -65,6 +115,9 @@ export default function GoodsDetailPage() {
   const [showPurchaseSection, setShowPurchaseSection] = useState(false);
   const [quantities, setQuantities] = useState({});
   const [myOrders, setMyOrders] = useState([]);
+  const [preorderRegistered, setPreorderRegistered] = useState(false);
+  const [preorderSubmitting, setPreorderSubmitting] = useState(false);
+  const [wishlisted, setWishlisted] = useState(false);
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const { toast, show, hide } = useToast();
@@ -82,6 +135,14 @@ export default function GoodsDetailPage() {
     if (!isAuthenticated) return;
     axiosClient.get(`/seller/orders/my/goods/${id}`)
       .then((res) => setMyOrders(res.data.data || []))
+      .catch(() => {});
+    // 수요조사 신청 여부 확인
+    axiosClient.get(`/goods/${id}/preorder/check`)
+      .then((res) => setPreorderRegistered(res.data.data?.registered ?? false))
+      .catch(() => {});
+    // 찜 여부 확인
+    checkWishlistStatus(id)
+      .then((res) => setWishlisted(res.wishlisted ?? false))
       .catch(() => {});
   }, [id, isAuthenticated]);
 
@@ -109,8 +170,53 @@ export default function GoodsDetailPage() {
   }, 0);
   const totalPrice = itemsTotal + Number(goods.deliveryFee || 0);
 
+  const isPreorder = goods.goodsType === 'PREORDER';
   const isBuyer = user?.role === 'BUYER';
   const canPurchase = isAuthenticated && isBuyer;
+
+  // 수요조사 마감 여부
+  const preorderExpired = isPreorder && goods.preorderDeadline && new Date(goods.preorderDeadline) < new Date();
+
+  // 수요조사 신청
+  const handlePreorderRegister = async () => {
+    if (!isAuthenticated) { navigate('/login'); return; }
+    if (!hasAnyQty) { show('수량을 1개 이상 선택해주세요.', 'error'); return; }
+    setPreorderSubmitting(true);
+    try {
+      const items = options
+        .filter((opt) => (quantities[opt.id] || 0) > 0)
+        .map((opt) => ({ optionId: opt.id, quantity: quantities[opt.id] }));
+      await axiosClient.post(`/goods/${id}/preorder`, { items });
+      show('수요조사 신청이 완료되었습니다!', 'success');
+      setPreorderRegistered(true);
+    } catch (err) {
+      show(err.response?.data?.message || '신청에 실패했습니다.', 'error');
+    } finally {
+      setPreorderSubmitting(false);
+    }
+  };
+
+  const handlePreorderCancel = async () => {
+    if (!confirm('수요조사 신청을 취소하시겠습니까?')) return;
+    try {
+      await axiosClient.delete(`/goods/${id}/preorder`);
+      show('신청이 취소되었습니다.', 'success');
+      setPreorderRegistered(false);
+    } catch (err) {
+      show(err.response?.data?.message || '취소에 실패했습니다.', 'error');
+    }
+  };
+
+  const handleWishlistToggle = async () => {
+    if (!isAuthenticated) { navigate('/login'); return; }
+    try {
+      const res = await toggleWishlist(id);
+      setWishlisted(res.wishlisted);
+      show(res.wishlisted ? '찜 목록에 추가되었습니다.' : '찜 목록에서 삭제되었습니다.', 'success');
+    } catch {
+      show('처리에 실패했습니다.', 'error');
+    }
+  };
 
   const allSoldOut = options.length > 0 && options.every(
     (opt) => opt.stock !== null && opt.stock !== undefined && opt.stock === 0,
@@ -131,21 +237,79 @@ export default function GoodsDetailPage() {
       </button>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {/* 미리보기 이미지 */}
-        {previewOption?.imageUrl ? (
-          <img
-            src={previewOption.imageUrl}
-            alt={previewOption.name}
-            className="w-full h-56 sm:h-72 object-cover transition-opacity duration-200"
-          />
-        ) : (
-          <div className="w-full h-40 sm:h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center gap-2 text-gray-400">
-            <span className="text-5xl">🛍</span>
-          </div>
-        )}
+        {/* 메인 이미지 + 갤러리 */}
+        <GoodsImageGallery
+          mainImage={previewOption?.imageUrl}
+          additionalImages={goods.additionalImages || []}
+        />
 
         <div className="p-4 sm:p-7">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 leading-snug">{goods.name}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800 leading-snug">{goods.name}</h1>
+            {isAuthenticated && (
+              <button
+                onClick={handleWishlistToggle}
+                className={`flex-shrink-0 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  wishlisted
+                    ? 'border-red-300 bg-red-50 text-red-500'
+                    : 'border-gray-200 bg-white text-gray-400 hover:border-red-200 hover:text-red-400'
+                }`}
+                title={wishlisted ? '찜 취소' : '찜하기'}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24"
+                  fill={wishlisted ? 'currentColor' : 'none'}
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* 태그/카테고리 */}
+          {(goods.category || goods.tags) && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {goods.category && (
+                <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-600 text-xs font-semibold rounded-full">{goods.category}</span>
+              )}
+              {goods.tags && goods.tags.split(',').map((tag) => tag.trim()).filter(Boolean).map((tag) => (
+                <span key={tag} className="px-2.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full">#{tag}</span>
+              ))}
+            </div>
+          )}
+
+          {/* 수요조사 정보 배너 */}
+          {isPreorder && (
+            <div className="mt-3 rounded-xl border px-4 py-3 bg-indigo-50 border-indigo-200">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-base">📋</span>
+                <span className="text-sm font-semibold text-indigo-800">사전수요조사</span>
+                {preorderExpired ? (
+                  <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs font-semibold rounded-full">마감</span>
+                ) : (
+                  <span className="px-2 py-0.5 bg-indigo-200 text-indigo-700 text-xs font-semibold rounded-full">진행 중</span>
+                )}
+              </div>
+              <div className="flex items-center gap-4 text-xs text-indigo-600">
+                {goods.preorderDeadline && (
+                  <span>마감: {new Date(goods.preorderDeadline).toLocaleString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                )}
+                {goods.preorderCount != null && (
+                  <span className="font-semibold">{goods.preorderCount}명 신청</span>
+                )}
+              </div>
+              {preorderRegistered && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-green-700 font-semibold bg-green-100 px-2 py-0.5 rounded-full">신청 완료</span>
+                  {!preorderExpired && (
+                    <button onClick={handlePreorderCancel} className="text-xs text-gray-400 hover:text-red-500">신청 취소</button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 구매 이력 알림 */}
           {myOrders.length > 0 && (
@@ -186,7 +350,7 @@ export default function GoodsDetailPage() {
           {goods.description && (
             <div
               className="rich-content text-gray-600 mt-3"
-              dangerouslySetInnerHTML={{ __html: goods.description }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(goods.description) }}
             />
           )}
 
@@ -318,18 +482,36 @@ export default function GoodsDetailPage() {
             </div>
 
             <div>
-              {canPurchase && !optionSoldOut && (
-                <Button onClick={handlePurchase} disabled={!hasAnyQty}>
-                  구매 신청하기
-                </Button>
-              )}
-              {canPurchase && optionSoldOut && (
-                <span className="text-sm text-gray-400">품절</span>
-              )}
-              {!isAuthenticated && (
-                <Button onClick={() => navigate('/login')}>
-                  로그인 후 구매
-                </Button>
+              {isPreorder ? (
+                <>
+                  {preorderExpired ? (
+                    <span className="text-sm text-gray-400 font-medium">수요조사 마감</span>
+                  ) : preorderRegistered ? (
+                    <span className="text-sm text-green-600 font-semibold">신청 완료</span>
+                  ) : isAuthenticated ? (
+                    <Button onClick={handlePreorderRegister} disabled={!hasAnyQty || preorderSubmitting}>
+                      {preorderSubmitting ? '신청 중...' : '수요조사 신청'}
+                    </Button>
+                  ) : (
+                    <Button onClick={() => navigate('/login')}>로그인 후 신청</Button>
+                  )}
+                </>
+              ) : (
+                <>
+                  {canPurchase && !optionSoldOut && (
+                    <Button onClick={handlePurchase} disabled={!hasAnyQty}>
+                      구매 신청하기
+                    </Button>
+                  )}
+                  {canPurchase && optionSoldOut && (
+                    <span className="text-sm text-gray-400">품절</span>
+                  )}
+                  {!isAuthenticated && (
+                    <Button onClick={() => navigate('/login')}>
+                      로그인 후 구매
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>

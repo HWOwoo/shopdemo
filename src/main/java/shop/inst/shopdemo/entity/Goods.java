@@ -48,6 +48,10 @@ public class Goods {
 
     private String imageUrl;
 
+    /** 추가 이미지 URL 목록 (콤마 구분, 최대 5장) */
+    @Column(columnDefinition = "TEXT")
+    private String additionalImages;
+
     /** 결제 수단 */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -63,6 +67,15 @@ public class Goods {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private GoodsType goodsType = GoodsType.SALE;
+
+    /** 사전수요조사 마감일 (PREORDER 타입 전용) */
+    private LocalDateTime preorderDeadline;
+
+    /** 카테고리 (자유 입력) */
+    private String category;
+
+    /** 태그 (콤마 구분) */
+    private String tags;
 
     @Column(nullable = false)
     private Boolean requiresCopyrightPermission;

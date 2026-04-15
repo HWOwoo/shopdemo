@@ -12,6 +12,7 @@ const BANKS = [
 ];
 
 const emptyItem = () => ({ name: '', shortDescription: '', price: '', stock: '', imageUrl: '', uploading: false });
+const MAX_ADDITIONAL_IMAGES = 5;
 
 /* 물품 이미지 업로드 버튼 */
 function ItemImageUpload({ imageUrl, uploading, onChange }) {
@@ -91,6 +92,10 @@ export default function GoodsForm({ onSubmit, loading, initialData, submitLabel 
         bankAccountHolder: initialData.bankAccountHolder || '',
         requiresCopyrightPermission: initialData.requiresCopyrightPermission || false,
         rightsHolderEmail: initialData.rightsHolderEmail || '',
+        preorderDeadline: initialData.preorderDeadline ? initialData.preorderDeadline.slice(0, 16) : '',
+        category: initialData.category || '',
+        tags: initialData.tags || '',
+        additionalImages: (initialData.additionalImages || []).map((url) => ({ url, uploading: false })),
       };
     }
     return {
@@ -105,6 +110,10 @@ export default function GoodsForm({ onSubmit, loading, initialData, submitLabel 
       bankAccountHolder: '',
       requiresCopyrightPermission: false,
       rightsHolderEmail: '',
+      preorderDeadline: '',
+      category: '',
+      tags: '',
+      additionalImages: [],
     };
   });
 
@@ -119,6 +128,51 @@ export default function GoodsForm({ onSubmit, loading, initialData, submitLabel 
     });
 
   const addItem = () => setForm((prev) => ({ ...prev, items: [...prev.items, emptyItem()] }));
+
+  /* 추가 이미지 업로드 */
+  const additionalImageInputRef = useRef(null);
+
+  const handleAdditionalImageFile = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const available = MAX_ADDITIONAL_IMAGES - form.additionalImages.filter((i) => i.url).length;
+    const toUpload = files.slice(0, available);
+    if (toUpload.length === 0) {
+      alert(`추가 이미지는 최대 ${MAX_ADDITIONAL_IMAGES}장까지 등록할 수 있습니다.`);
+      return;
+    }
+    // 업로드 중 플레이스홀더 추가
+    const placeholders = toUpload.map(() => ({ url: '', uploading: true }));
+    setForm((prev) => ({ ...prev, additionalImages: [...prev.additionalImages, ...placeholders] }));
+
+    const results = await Promise.all(
+      toUpload.map(async (file) => {
+        try {
+          const fd = new FormData();
+          fd.append('file', file);
+          const res = await axiosClient.post('/upload/image', fd, {
+            headers: { 'Content-Type': undefined },
+          });
+          return { url: res.data.data, uploading: false };
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    setForm((prev) => {
+      const existing = prev.additionalImages.filter((i) => !i.uploading);
+      const uploaded = results.filter(Boolean);
+      return { ...prev, additionalImages: [...existing, ...uploaded] };
+    });
+    e.target.value = '';
+  };
+
+  const removeAdditionalImage = (idx) =>
+    setForm((prev) => ({
+      ...prev,
+      additionalImages: prev.additionalImages.filter((_, i) => i !== idx),
+    }));
 
   const removeItem = (idx) =>
     setForm((prev) => ({ ...prev, items: prev.items.filter((_, i) => i !== idx) }));
@@ -147,6 +201,10 @@ export default function GoodsForm({ onSubmit, loading, initialData, submitLabel 
       bankName: form.paymentType === 'BANK_TRANSFER' ? form.bankName : undefined,
       bankAccount: form.paymentType === 'BANK_TRANSFER' ? form.bankAccount : undefined,
       bankAccountHolder: form.paymentType === 'BANK_TRANSFER' ? form.bankAccountHolder : undefined,
+      preorderDeadline: form.goodsType === 'PREORDER' && form.preorderDeadline ? form.preorderDeadline + ':00' : undefined,
+      category: form.category || undefined,
+      tags: form.tags || undefined,
+      additionalImages: form.additionalImages.filter((i) => i.url).map((i) => i.url),
     });
   };
 
@@ -179,6 +237,24 @@ export default function GoodsForm({ onSubmit, loading, initialData, submitLabel 
             </button>
           ))}
         </div>
+
+        {/* PREORDER 마감일 */}
+        {form.goodsType === 'PREORDER' && (
+          <div className="mt-3 p-4 bg-indigo-50 rounded-xl border border-indigo-200">
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-indigo-700">수요조사 마감일 *</label>
+              <input
+                type="datetime-local"
+                value={form.preorderDeadline}
+                onChange={(e) => set('preorderDeadline', e.target.value)}
+                required
+                min={new Date().toISOString().slice(0, 16)}
+                className="border border-indigo-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              />
+              <p className="text-xs text-indigo-500 mt-1">마감일이 지나면 자동으로 마감되며, 생산 확정 여부를 결정할 수 있습니다.</p>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ── 기본 정보 ── */}
@@ -193,6 +269,35 @@ export default function GoodsForm({ onSubmit, loading, initialData, submitLabel 
           maxLength={200}
           placeholder="상품 이름을 입력하세요"
         />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">카테고리</label>
+            <select
+              value={form.category}
+              onChange={(e) => set('category', e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+            >
+              <option value="">선택 안 함</option>
+              <option value="아크릴 스탠드">아크릴 스탠드</option>
+              <option value="포토카드">포토카드</option>
+              <option value="포스터">포스터</option>
+              <option value="키링">키링</option>
+              <option value="에코백">에코백</option>
+              <option value="스티커">스티커</option>
+              <option value="동인지">동인지</option>
+              <option value="의류">의류</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+          <Input
+            label="태그 (콤마 구분)"
+            value={form.tags}
+            onChange={(e) => set('tags', e.target.value)}
+            placeholder="블루아카이브, 코믹월드, 아크릴"
+            maxLength={200}
+          />
+        </div>
 
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-gray-700">상품 설명</label>
@@ -423,6 +528,60 @@ export default function GoodsForm({ onSubmit, loading, initialData, submitLabel 
           </div>
         </div>
       )}
+
+      {/* ── 추가 이미지 ── */}
+      <section className="flex flex-col gap-3">
+        <SectionTitle>추가 이미지 (최대 {MAX_ADDITIONAL_IMAGES}장)</SectionTitle>
+        <p className="text-xs text-gray-400">상품 상세 페이지에서 갤러리로 표시됩니다.</p>
+
+        <div className="flex flex-wrap gap-2">
+          {form.additionalImages.map((img, idx) => (
+            <div key={idx} className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
+              {img.uploading ? (
+                <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 animate-pulse">업로드 중...</div>
+              ) : (
+                <>
+                  <img src={img.url} alt={`추가 이미지 ${idx + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeAdditionalImage(idx)}
+                    className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+                    title="삭제"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+
+          {form.additionalImages.filter((i) => i.url).length < MAX_ADDITIONAL_IMAGES && (
+            <>
+              <input
+                ref={additionalImageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleAdditionalImageFile}
+              />
+              <button
+                type="button"
+                onClick={() => additionalImageInputRef.current?.click()}
+                className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 hover:border-indigo-400 flex flex-col items-center justify-center gap-1 text-gray-300 hover:text-indigo-400 transition-colors bg-white flex-shrink-0"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="text-[10px] font-medium">사진 추가</span>
+              </button>
+            </>
+          )}
+        </div>
+      </section>
 
       {/* ── 저작권 ── */}
       <section className="flex flex-col gap-3">

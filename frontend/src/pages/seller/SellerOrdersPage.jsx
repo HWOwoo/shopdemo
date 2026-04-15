@@ -106,9 +106,12 @@ function TrackingModal({ order, onClose, onSaved }) {
 }
 
 const STATUS_LABEL = {
-  PENDING_PAYMENT:  { label: '입금 대기', cls: 'bg-yellow-100 text-yellow-700' },
-  PAYMENT_CONFIRMED:{ label: '입금 확인', cls: 'bg-green-100 text-green-700' },
-  CANCELLED:        { label: '취소',      cls: 'bg-gray-100 text-gray-500' },
+  PENDING_PAYMENT:   { label: '입금 대기',   cls: 'bg-yellow-100 text-yellow-700' },
+  PAYMENT_CONFIRMED: { label: '입금 확인',   cls: 'bg-green-100 text-green-700' },
+  SHIPPED:           { label: '배송 중',     cls: 'bg-blue-100 text-blue-700' },
+  DELIVERED:         { label: '배송 완료',   cls: 'bg-indigo-100 text-indigo-700' },
+  CANCEL_REQUESTED:  { label: '취소 요청중', cls: 'bg-orange-100 text-orange-700' },
+  CANCELLED:         { label: '취소',        cls: 'bg-gray-100 text-gray-500' },
 };
 
 const TYPE_LABEL = {
@@ -198,16 +201,30 @@ function OrderDetailDrawer({ order, onClose, onConfirm, onCancel }) {
               </div>
             </section>
           )}
+          {(order.courierName || order.trackingNumber) && (
+            <section>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">배송 정보</p>
+              <div className="space-y-2 text-sm">
+                <Row label="택배사" value={order.courierName || '-'} />
+                <Row label="송장번호" value={order.trackingNumber || '-'} />
+              </div>
+            </section>
+          )}
         </div>
         {order.status === 'PENDING_PAYMENT' && (
           <div className="p-5 border-t flex gap-2">
             <button onClick={() => onConfirm(order.id)} className="flex-1 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 transition-colors">입금 확인</button>
-            <button onClick={() => onCancel(order.id)} className="flex-1 py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors">주문 취소</button>
+            <button onClick={() => onCancel(order.id)} className="flex-1 py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors">취소 요청</button>
           </div>
         )}
         {order.status === 'PAYMENT_CONFIRMED' && (
           <div className="p-5 border-t">
-            <button onClick={() => onCancel(order.id)} className="w-full py-2.5 border border-red-200 text-red-500 text-sm font-medium rounded-xl hover:bg-red-50 transition-colors">주문 취소</button>
+            <button onClick={() => onCancel(order.id)} className="w-full py-2.5 border border-red-200 text-red-500 text-sm font-medium rounded-xl hover:bg-red-50 transition-colors">취소 요청</button>
+          </div>
+        )}
+        {order.status === 'CANCEL_REQUESTED' && (
+          <div className="p-5 border-t">
+            <div className="text-center text-sm text-orange-500 font-medium py-1">취소 요청 처리 중 (관리자 승인 대기)</div>
           </div>
         )}
       </div>
@@ -305,7 +322,7 @@ function GoodsOrderGroup({ group, onSelectOrder, onConfirm, onCancel, onOpenTrac
                       {order.status === 'PENDING_PAYMENT' && (
                         <div className="flex items-center justify-center gap-1.5">
                           <button onClick={() => onConfirm(order.id)} className="px-2.5 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors">입금확인</button>
-                          <button onClick={() => onCancel(order.id)} className="px-2.5 py-1 border border-gray-300 text-gray-500 text-xs rounded hover:bg-gray-50 transition-colors">취소</button>
+                          <button onClick={() => onCancel(order.id)} className="px-2.5 py-1 border border-gray-300 text-gray-500 text-xs rounded hover:bg-gray-50 transition-colors">취소 요청</button>
                         </div>
                       )}
                       {order.status === 'PAYMENT_CONFIRMED' && (
@@ -320,7 +337,7 @@ function GoodsOrderGroup({ group, onSelectOrder, onConfirm, onCancel, onOpenTrac
                           >
                             {order.trackingNumber ? '송장 수정' : '송장 입력'}
                           </button>
-                          <button onClick={() => onCancel(order.id)} className="px-2.5 py-1 border border-red-200 text-red-400 text-xs rounded hover:bg-red-50 transition-colors">취소</button>
+                          <button onClick={() => onCancel(order.id)} className="px-2.5 py-1 border border-red-200 text-red-400 text-xs rounded hover:bg-red-50 transition-colors">취소 요청</button>
                         </div>
                       )}
                     </td>
@@ -422,10 +439,10 @@ export default function SellerOrdersPage() {
   };
 
   const handleCancel = async (orderId) => {
-    if (!confirm('주문을 취소하시겠습니까?')) return;
+    if (!confirm('취소 요청을 접수하시겠습니까? 관리자 승인 후 취소됩니다.')) return;
     try {
       const res = await axiosClient.put(`/seller/orders/${orderId}/cancel`);
-      show('주문이 취소되었습니다.', 'success');
+      show('취소 요청이 접수되었습니다.', 'success');
       updateOrder(res.data.data);
     } catch (err) {
       show(err.response?.data?.message || '처리에 실패했습니다.', 'error');
@@ -437,6 +454,9 @@ export default function SellerOrdersPage() {
     ALL: orders.length,
     PENDING_PAYMENT: orders.filter((o) => o.status === 'PENDING_PAYMENT').length,
     PAYMENT_CONFIRMED: orders.filter((o) => o.status === 'PAYMENT_CONFIRMED').length,
+    SHIPPED: orders.filter((o) => o.status === 'SHIPPED').length,
+    DELIVERED: orders.filter((o) => o.status === 'DELIVERED').length,
+    CANCEL_REQUESTED: orders.filter((o) => o.status === 'CANCEL_REQUESTED').length,
     CANCELLED: orders.filter((o) => o.status === 'CANCELLED').length,
   };
 
@@ -471,6 +491,9 @@ export default function SellerOrdersPage() {
           { key: 'ALL', label: '전체' },
           { key: 'PENDING_PAYMENT', label: '입금 대기' },
           { key: 'PAYMENT_CONFIRMED', label: '입금 확인' },
+          { key: 'SHIPPED', label: '배송 중' },
+          { key: 'DELIVERED', label: '배송 완료' },
+          { key: 'CANCEL_REQUESTED', label: '취소 요청 중' },
           { key: 'CANCELLED', label: '취소' },
         ].map(({ key, label }) => (
           <button

@@ -36,16 +36,23 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/goods", "/api/goods/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/goods", "/api/goods/{id}", "/api/goods/seller/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/*/profile").permitAll()
                         .requestMatchers("/api/goods/my", "/api/goods/my/**").hasRole("SELLER")
                         .requestMatchers(HttpMethod.POST, "/api/goods").hasRole("SELLER")
+                        .requestMatchers(HttpMethod.GET, "/api/goods/preorder/my").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/goods/*/preorder").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/goods/*/preorder").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/goods/*/preorder/check").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/seller/orders/my", "/api/seller/orders/my/goods/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/seller/orders/my/*/confirm-delivery", "/api/seller/orders/my/*/cancel").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/seller/settlements").hasRole("SELLER")
                         .requestMatchers("/api/seller/orders", "/api/seller/orders/**").hasRole("SELLER")
                         .requestMatchers(HttpMethod.GET, "/api/reviews/goods/**").permitAll()
                         .requestMatchers("/api/reviews/**").authenticated()
                         .requestMatchers("/api/notifications/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/goods/*/purchase").hasRole("BUYER")
+                        .requestMatchers("/api/wishlist/**").authenticated()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
@@ -61,7 +68,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+        config.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-Requested-With"));
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

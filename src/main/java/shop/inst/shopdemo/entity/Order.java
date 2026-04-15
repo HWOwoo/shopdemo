@@ -42,6 +42,10 @@ public class Order {
     @Builder.Default
     private OrderStatus status = OrderStatus.PENDING_PAYMENT;
 
+    // 취소 요청 시 이전 상태 저장 (거절 시 복구용)
+    @Enumerated(EnumType.STRING)
+    private OrderStatus previousStatus;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PurchaseType purchaseType;

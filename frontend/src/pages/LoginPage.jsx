@@ -48,7 +48,7 @@ export default function LoginPage() {
       dispatch({ type: 'LOGIN', payload: res.data.data });
       const role = res.data.data.role;
       if (role === 'SELLER') navigate('/seller/dashboard');
-      else if (role === 'ADMIN') navigate('/admin/dashboard');
+      else if (role === 'ADMIN') navigate('/admin/seller-applications');
       else navigate('/');
     } catch (err) {
       setError(err.response?.data?.message || '로그인에 실패했습니다.');

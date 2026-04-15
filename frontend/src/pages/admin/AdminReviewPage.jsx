@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import axiosClient from '../../api/axiosClient';
 import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
@@ -153,7 +154,7 @@ export default function AdminReviewPage() {
             <p className="text-sm font-medium text-gray-600 mb-2">상품 설명</p>
             <div
               className="rich-content text-gray-600 text-sm border border-gray-100 rounded-lg p-3"
-              dangerouslySetInnerHTML={{ __html: goods.description }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(goods.description) }}
             />
           </div>
         )}

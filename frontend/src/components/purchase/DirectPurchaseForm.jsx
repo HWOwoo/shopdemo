@@ -54,6 +54,7 @@ export default function DirectPurchaseForm({ goods, quantities, options, totalPr
     if (!form.ordererPhone.trim()) e.ordererPhone = '핸드폰번호를 입력하세요';
     if (!form.recipientName.trim()) e.recipientName = '수령자명을 입력하세요';
     if (!form.recipientPhone.trim()) e.recipientPhone = '연락처를 입력하세요';
+    if (!form.postalCode.trim()) e.postalCode = '우편번호를 입력하세요';
     if (!form.address.trim()) e.address = '주소를 입력하세요';
     if (!form.privacyAgreed) e.privacyAgreed = '개인정보 제공에 동의해 주세요';
     setErrors(e);
@@ -259,21 +260,24 @@ export default function DirectPurchaseForm({ goods, quantities, options, totalPr
               />
               {errors.recipientPhone && <p className="text-xs text-red-500 mt-0.5">{errors.recipientPhone}</p>}
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="우편번호"
-                value={form.postalCode}
-                onChange={(e) => set('postalCode', e.target.value)}
-                className="w-32 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
-              />
-              <button
-                type="button"
-                onClick={() => alert('우편번호 찾기 기능은 준비 중입니다.')}
-                className="px-4 py-2 bg-red-400 text-white text-sm font-medium rounded hover:bg-red-500 transition-colors whitespace-nowrap"
-              >
-                우편번호 찾기
-              </button>
+            <div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="우편번호"
+                  value={form.postalCode}
+                  onChange={(e) => set('postalCode', e.target.value)}
+                  className={`w-32 ${inputCls(errors.postalCode)}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => alert('우편번호 찾기 기능은 준비 중입니다.')}
+                  className="px-4 py-2 bg-red-400 text-white text-sm font-medium rounded hover:bg-red-500 transition-colors whitespace-nowrap"
+                >
+                  우편번호 찾기
+                </button>
+              </div>
+              {errors.postalCode && <p className="text-xs text-red-500 mt-0.5">{errors.postalCode}</p>}
             </div>
             <div>
               <input

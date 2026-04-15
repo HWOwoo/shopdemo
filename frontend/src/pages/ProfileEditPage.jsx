@@ -32,12 +32,21 @@ export default function ProfileEditPage() {
   const navigate = useNavigate();
   const { toast, show, hide } = useToast();
   const [bio, setBio] = useState('');
+  const [twitterUrl, setTwitterUrl] = useState('');
+  const [pixivUrl, setPixivUrl] = useState('');
+  const [instagramUrl, setInstagramUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     axiosClient.get(`/users/${user.username}/profile`)
-      .then((res) => setBio(res.data.data?.bio || ''))
+      .then((res) => {
+        const d = res.data.data;
+        setBio(d?.bio || '');
+        setTwitterUrl(d?.twitterUrl || '');
+        setPixivUrl(d?.pixivUrl || '');
+        setInstagramUrl(d?.instagramUrl || '');
+      })
       .finally(() => setLoading(false));
   }, [user.username]);
 
@@ -45,7 +54,7 @@ export default function ProfileEditPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await axiosClient.put('/users/me/profile', { bio });
+      await axiosClient.put('/users/me/profile', { bio, twitterUrl, pixivUrl, instagramUrl });
       show('프로필이 저장되었습니다.', 'success');
     } catch {
       show('저장에 실패했습니다.', 'error');
@@ -96,6 +105,47 @@ export default function ProfileEditPage() {
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none leading-relaxed"
             />
           </div>
+
+          {/* SNS 링크 (판매자만) */}
+          {user?.role === 'SELLER' && (
+            <>
+              <div className="border-t border-gray-100 pt-5">
+                <p className="text-sm font-semibold text-gray-700 mb-3">SNS 링크</p>
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-500">Twitter / X</label>
+                    <input
+                      type="url"
+                      value={twitterUrl}
+                      onChange={(e) => setTwitterUrl(e.target.value)}
+                      placeholder="https://x.com/username"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-500">Pixiv</label>
+                    <input
+                      type="url"
+                      value={pixivUrl}
+                      onChange={(e) => setPixivUrl(e.target.value)}
+                      placeholder="https://www.pixiv.net/users/12345"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-500">Instagram</label>
+                    <input
+                      type="url"
+                      value={instagramUrl}
+                      onChange={(e) => setInstagramUrl(e.target.value)}
+                      placeholder="https://www.instagram.com/username"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           <Button type="submit" disabled={saving}>
             {saving ? '저장 중...' : '저장하기'}

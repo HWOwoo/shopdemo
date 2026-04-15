@@ -20,9 +20,11 @@ import shop.inst.shopdemo.exception.ResourceNotFoundException;
 import shop.inst.shopdemo.exception.UnauthorizedException;
 import shop.inst.shopdemo.repository.GoodsOptionRepository;
 import shop.inst.shopdemo.repository.GoodsRepository;
+import shop.inst.shopdemo.repository.PreorderEntryRepository;
 import shop.inst.shopdemo.repository.UserRepository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -32,11 +34,17 @@ public class GoodsService {
     private final GoodsRepository goodsRepository;
     private final GoodsOptionRepository goodsOptionRepository;
     private final UserRepository userRepository;
+    private final PreorderEntryRepository preorderEntryRepository;
     private final EmailService emailService;
 
-    /** 공개 상품 목록: 상품 APPROVED + 판매자 신청 APPROVED + 판매 유형 필터 */
+    /** 공개 상품 목록: 상품 APPROVED + 판매자 신청 APPROVED + 판매 유형 필터 + 검색 */
     @Transactional(readOnly = true)
-    public Page<GoodsResponse> getApprovedGoods(GoodsType goodsType, Pageable pageable) {
+    public Page<GoodsResponse> getApprovedGoods(GoodsType goodsType, String keyword, Pageable pageable) {
+        if (keyword != null && !keyword.isBlank()) {
+            return goodsRepository.searchByKeyword(
+                            GoodsStatus.APPROVED, ApplicationStatus.APPROVED, goodsType, keyword.trim(), pageable)
+                    .map(this::toResponse);
+        }
         return goodsRepository.findByStatusAndSellerApprovedAndType(
                         GoodsStatus.APPROVED, ApplicationStatus.APPROVED, goodsType, pageable)
                 .map(this::toResponse);
@@ -91,8 +99,22 @@ public class GoodsService {
         // 모든 상품은 관리자 승인 후 공개 (저작권 여부 무관하게 PENDING 시작)
         GoodsStatus initialStatus = GoodsStatus.PENDING;
 
+        GoodsType type = request.getGoodsType() != null ? request.getGoodsType() : GoodsType.SALE;
+
+        // PREORDER 타입은 마감일 필수 + 미래 날짜여야 함
+        if (type == GoodsType.PREORDER) {
+            if (request.getPreorderDeadline() == null) {
+                throw new BadRequestException("사전수요조사는 마감일을 설정해주세요.");
+            }
+            if (request.getPreorderDeadline().isBefore(LocalDateTime.now())) {
+                throw new BadRequestException("수요조사 마감일은 현재 시각 이후여야 합니다.");
+            }
+        }
+
+        String additionalImagesStr = toAdditionalImagesString(request.getAdditionalImages());
+
         Goods goods = Goods.builder()
-                .goodsType(request.getGoodsType() != null ? request.getGoodsType() : GoodsType.SALE)
+                .goodsType(type)
                 .name(request.getName())
                 .description(request.getDescription())
                 .price(minPrice)
@@ -104,6 +126,10 @@ public class GoodsService {
                 .bankAccountHolder(request.getBankAccountHolder())
                 .requiresCopyrightPermission(request.getRequiresCopyrightPermission())
                 .rightsHolderEmail(request.getRightsHolderEmail())
+                .preorderDeadline(type == GoodsType.PREORDER ? request.getPreorderDeadline() : null)
+                .category(request.getCategory())
+                .tags(request.getTags())
+                .additionalImages(additionalImagesStr)
                 .status(initialStatus)
                 .copyrightEmailSent(false)
                 .seller(seller)
@@ -132,6 +158,16 @@ public class GoodsService {
         }
 
         return toResponse(goods);
+    }
+
+    /** 특정 판매자의 승인된 상품 목록 (공개 프로필용) */
+    @Transactional(readOnly = true)
+    public List<GoodsResponse> getApprovedGoodsBySeller(String sellerUsername) {
+        User seller = userRepository.findByUsername(sellerUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + sellerUsername));
+        return goodsRepository.findBySellerAndStatus(seller, GoodsStatus.APPROVED).stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -184,7 +220,17 @@ public class GoodsService {
         int totalStock = hasUnlimited ? Integer.MAX_VALUE
                 : request.getOptions().stream().mapToInt(o -> o.getStock()).sum();
 
-        goods.setGoodsType(request.getGoodsType() != null ? request.getGoodsType() : GoodsType.SALE);
+        GoodsType type = request.getGoodsType() != null ? request.getGoodsType() : GoodsType.SALE;
+        if (type == GoodsType.PREORDER) {
+            if (request.getPreorderDeadline() == null) {
+                throw new BadRequestException("사전수요조사는 마감일을 설정해주세요.");
+            }
+            if (request.getPreorderDeadline().isBefore(LocalDateTime.now())) {
+                throw new BadRequestException("수요조사 마감일은 현재 시각 이후여야 합니다.");
+            }
+        }
+
+        goods.setGoodsType(type);
         goods.setName(request.getName());
         goods.setDescription(request.getDescription());
         goods.setPrice(minPrice);
@@ -196,12 +242,16 @@ public class GoodsService {
         goods.setBankAccountHolder(request.getBankAccountHolder());
         goods.setRequiresCopyrightPermission(request.getRequiresCopyrightPermission());
         goods.setRightsHolderEmail(request.getRightsHolderEmail());
+        goods.setPreorderDeadline(type == GoodsType.PREORDER ? request.getPreorderDeadline() : null);
+        goods.setCategory(request.getCategory());
+        goods.setTags(request.getTags());
+        goods.setAdditionalImages(toAdditionalImagesString(request.getAdditionalImages()));
         goods.setStatus(GoodsStatus.PENDING);
         goods.setRejectionReason(null);
 
-        // 기존 옵션 교체
-        goodsOptionRepository.deleteAll(goods.getOptions());
+        // 기존 옵션 교체 (orphanRemoval이 삭제를 처리)
         goods.getOptions().clear();
+        goodsRepository.flush();
 
         List<GoodsOption> options = request.getOptions().stream()
                 .map(o -> GoodsOption.builder()
@@ -272,6 +322,27 @@ public class GoodsService {
         return toResponse(goodsRepository.save(goods));
     }
 
+    /** 추가 이미지 등록 (기존 목록에 추가, 최대 5장) */
+    @Transactional
+    public GoodsResponse addAdditionalImages(String username, Long id, List<String> imageUrls) {
+        Goods goods = getOwnedGoods(username, id);
+        List<String> existing = fromAdditionalImagesString(goods.getAdditionalImages());
+        existing.addAll(imageUrls);
+        if (existing.size() > 5) {
+            throw new BadRequestException("추가 이미지는 최대 5장까지 등록할 수 있습니다.");
+        }
+        goods.setAdditionalImages(String.join(",", existing));
+        return toResponse(goodsRepository.save(goods));
+    }
+
+    /** 추가 이미지 전체 삭제 */
+    @Transactional
+    public GoodsResponse deleteAdditionalImages(String username, Long id) {
+        Goods goods = getOwnedGoods(username, id);
+        goods.setAdditionalImages(null);
+        return toResponse(goodsRepository.save(goods));
+    }
+
     private Goods getOwnedGoods(String username, Long id) {
         Goods goods = goodsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Goods not found: " + id));
@@ -336,8 +407,24 @@ public class GoodsService {
                 .rejectionReason(goods.getRejectionReason())
                 .sellerId(goods.getSeller().getId())
                 .sellerUsername(goods.getSeller().getUsername())
+                .preorderDeadline(goods.getPreorderDeadline())
+                .preorderCount(goods.getGoodsType() == GoodsType.PREORDER
+                        ? preorderEntryRepository.countByGoods(goods) : null)
+                .category(goods.getCategory())
+                .tags(goods.getTags())
+                .additionalImages(fromAdditionalImagesString(goods.getAdditionalImages()))
                 .createdAt(goods.getCreatedAt())
                 .updatedAt(goods.getUpdatedAt())
                 .build();
+    }
+
+    private String toAdditionalImagesString(List<String> urls) {
+        if (urls == null || urls.isEmpty()) return null;
+        return String.join(",", urls.stream().filter(u -> u != null && !u.isBlank()).toList());
+    }
+
+    private List<String> fromAdditionalImagesString(String str) {
+        if (str == null || str.isBlank()) return new java.util.ArrayList<>();
+        return new java.util.ArrayList<>(List.of(str.split(",")));
     }
 }

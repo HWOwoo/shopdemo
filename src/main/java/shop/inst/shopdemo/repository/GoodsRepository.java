@@ -11,6 +11,7 @@ import shop.inst.shopdemo.entity.enums.ApplicationStatus;
 import shop.inst.shopdemo.entity.enums.GoodsStatus;
 import shop.inst.shopdemo.entity.enums.GoodsType;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,4 +37,31 @@ public interface GoodsRepository extends JpaRepository<Goods, Long> {
             @Param("id") Long id,
             @Param("status") GoodsStatus status,
             @Param("appStatus") ApplicationStatus appStatus);
+
+    /** 검색 (이름, 설명, 판매자명, 카테고리, 태그) */
+    @Query("SELECT g FROM Goods g WHERE g.status = :status AND g.goodsType = :goodsType AND " +
+           "EXISTS (SELECT sa FROM SellerApplication sa WHERE sa.user = g.seller AND sa.status = :appStatus) AND " +
+           "(LOWER(g.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           " LOWER(g.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           " LOWER(g.seller.username) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           " LOWER(g.category) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           " LOWER(g.tags) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<Goods> searchByKeyword(
+            @Param("status") GoodsStatus status,
+            @Param("appStatus") ApplicationStatus appStatus,
+            @Param("goodsType") GoodsType goodsType,
+            @Param("keyword") String keyword,
+            Pageable pageable);
+
+    /** 특정 판매자의 승인된 상품 목록 (공개 프로필용) */
+    @Query("SELECT g FROM Goods g WHERE g.seller = :seller AND g.status = :status ORDER BY g.createdAt DESC")
+    List<Goods> findBySellerAndStatus(@Param("seller") User seller, @Param("status") GoodsStatus status);
+
+    /** 마감일 지난 PREORDER 상품 */
+    @Query("SELECT g FROM Goods g WHERE g.status = :status AND g.goodsType = :goodsType " +
+           "AND g.preorderDeadline IS NOT NULL AND g.preorderDeadline < :now")
+    List<Goods> findExpiredPreorders(
+            @Param("status") GoodsStatus status,
+            @Param("goodsType") GoodsType goodsType,
+            @Param("now") LocalDateTime now);
 }

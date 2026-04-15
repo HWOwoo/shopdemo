@@ -180,6 +180,12 @@ export default function Navbar() {
                     <Link to="/my/orders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <span className="text-base">🧾</span> 구매 내역
                     </Link>
+                    <Link to="/my/wishlist" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">🤍</span> 찜 목록
+                    </Link>
+                    <Link to="/my/preorders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">📋</span> 내 수요조사
+                    </Link>
                     <Link to="/my/reviews" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <span className="text-base">⭐</span> 내 리뷰
                     </Link>
@@ -195,11 +201,23 @@ export default function Navbar() {
                     <Link to="/my/orders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <span className="text-base">🧾</span> 구매 내역
                     </Link>
+                    <Link to="/my/wishlist" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">🤍</span> 찜 목록
+                    </Link>
+                    <Link to="/my/preorders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">📋</span> 내 수요조사
+                    </Link>
                     <Link to="/my/reviews" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <span className="text-base">⭐</span> 내 리뷰
                     </Link>
                     <Link to="/seller/dashboard" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <span className="text-base">📊</span> 판매자 대시보드
+                    </Link>
+                    <Link to="/seller/orders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">📦</span> 주문 관리
+                    </Link>
+                    <Link to="/seller/settlements" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">💰</span> 정산 내역
                     </Link>
                     <Link to="/seller/goods/new" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors sm:hidden">
                       <span className="text-base">➕</span> 굿즈 등록
@@ -218,6 +236,12 @@ export default function Navbar() {
                     </Link>
                     <Link to="/admin/seller-applications" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <span className="text-base">📋</span> 판매자 신청 관리
+                    </Link>
+                    <Link to="/admin/orders/cancel-requests" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">🔴</span> 주문 취소 요청
+                    </Link>
+                    <Link to="/admin/settlements" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">💰</span> 정산 관리
                     </Link>
                   </>
                 )}
@@ -246,17 +270,12 @@ export default function Navbar() {
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <Link to="/login" className="text-xs sm:text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">
-              로그인
-            </Link>
-            <Link
-              to="/register"
-              className="text-xs sm:text-sm bg-indigo-600 text-white px-2.5 sm:px-3.5 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
-            >
-              회원가입
-            </Link>
-          </div>
+          <Link
+            to="/login"
+            className="text-xs sm:text-sm bg-indigo-600 text-white px-2.5 sm:px-3.5 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
+          >
+            로그인/회원가입
+          </Link>
         )}
       </div>
 

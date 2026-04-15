@@ -64,6 +64,17 @@ export default function SellerDashboard() {
     }
   };
 
+  const handleConfirmPreorder = async (id) => {
+    if (!confirm('생산을 확정하시겠습니까? 수요조사가 통판으로 전환되며, 신청자에게 알림이 발송됩니다.')) return;
+    try {
+      await axiosClient.post(`/goods/my/${id}/preorder-confirm`);
+      show('생산이 확정되었습니다. 신청자에게 알림이 발송되었습니다.', 'success');
+      fetchGoods();
+    } catch (err) {
+      show(err.response?.data?.message || '처리에 실패했습니다.', 'error');
+    }
+  };
+
   return (
     <div>
       <Toast toast={toast} onClose={hide} />
@@ -114,6 +125,7 @@ export default function SellerDashboard() {
           <Link to="/seller/goods/new" className="text-indigo-600 hover:underline">상품 등록하기</Link>
         </div>
       ) : (
+        <>
         {/* 데스크탑: 테이블 */}
         <div className="hidden md:block bg-white rounded-xl shadow overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
@@ -157,7 +169,17 @@ export default function SellerDashboard() {
                       <Button size="sm" onClick={() => navigate(`/seller/goods/${g.id}`)}>
                         보기
                       </Button>
-                      {g.status === 'APPROVED' && (
+                      {g.goodsType === 'PREORDER' && (
+                        <Button size="sm" variant="outline" onClick={() => navigate(`/seller/preorders/${g.id}`)}>
+                          집계 보기 {(g.preorderCount ?? 0) > 0 && <span className="text-indigo-600 font-semibold ml-1">{g.preorderCount}명</span>}
+                        </Button>
+                      )}
+                      {g.goodsType === 'PREORDER' && g.status === 'CLOSED' && (
+                        <Button size="sm" variant="secondary" onClick={() => handleConfirmPreorder(g.id)}>
+                          생산 확정
+                        </Button>
+                      )}
+                      {g.goodsType !== 'PREORDER' && g.status === 'APPROVED' && (
                         <Button size="sm" variant="secondary" onClick={() => handleToggleSoldOut(g.id, false)}>
                           품절 처리
                         </Button>
@@ -207,7 +229,15 @@ export default function SellerDashboard() {
               </div>
               <div className="flex gap-1.5 flex-wrap">
                 <Button size="sm" onClick={() => navigate(`/seller/goods/${g.id}`)}>보기</Button>
-                {g.status === 'APPROVED' && (
+                {g.goodsType === 'PREORDER' && (
+                  <Button size="sm" variant="outline" onClick={() => navigate(`/seller/preorders/${g.id}`)}>
+                    집계 보기 {(g.preorderCount ?? 0) > 0 && <span className="text-indigo-600 font-semibold ml-1">{g.preorderCount}명</span>}
+                  </Button>
+                )}
+                {g.goodsType === 'PREORDER' && g.status === 'CLOSED' && (
+                  <Button size="sm" variant="secondary" onClick={() => handleConfirmPreorder(g.id)}>생산 확정</Button>
+                )}
+                {g.goodsType !== 'PREORDER' && g.status === 'APPROVED' && (
                   <Button size="sm" variant="secondary" onClick={() => handleToggleSoldOut(g.id, false)}>품절</Button>
                 )}
                 {g.status === 'SOLDOUT' && (
@@ -223,6 +253,7 @@ export default function SellerDashboard() {
             </div>
           ))}
         </div>
+        </>
       )}
     </div>
   );

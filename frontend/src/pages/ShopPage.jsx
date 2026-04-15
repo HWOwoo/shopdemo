@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../store/authStore';
+import { toggleWishlist } from '../api/wishlist';
 
 const DEFAULT_QUICK_KEYWORDS = [
   { label: '#서코', query: '서코', color: 'from-orange-400 to-red-500' },
@@ -116,21 +117,28 @@ export default function ShopPage() {
   const selectedCreator = searchParams.get('creator') || '';
   const searchQuery = searchParams.get('q') || '';
 
-  useEffect(() => {
+  const fetchGoods = (query) => {
     setLoading(true);
+    const params = new URLSearchParams({ page: '0', size: '40', type: 'SALE' });
+    if (query) params.set('keyword', query);
     axiosClient
-      .get('/goods?page=0&size=40&type=SALE')
+      .get(`/goods?${params}`)
       .then((res) => setGoods(res.data.data?.content || []))
       .finally(() => setLoading(false));
-  }, []);
+  };
 
-  useEffect(() => {
+  const fetchPreorder = (query) => {
     setPreorderLoading(true);
+    const params = new URLSearchParams({ page: '0', size: '40', type: 'PREORDER' });
+    if (query) params.set('keyword', query);
     axiosClient
-      .get('/goods?page=0&size=40&type=PREORDER')
+      .get(`/goods?${params}`)
       .then((res) => setPreorderGoods(res.data.data?.content || []))
       .finally(() => setPreorderLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { fetchGoods(searchQuery); }, [searchQuery]);
+  useEffect(() => { fetchPreorder(searchQuery); }, [searchQuery]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -154,16 +162,8 @@ export default function ShopPage() {
 
   const creators = extractCreators(goods);
 
-  // 검색어 필터
-  const searchFiltered = goods.filter((item) => {
-    if (!searchQuery) return true;
-    const kw = searchQuery.toLowerCase();
-    return (
-      item.name?.toLowerCase().includes(kw) ||
-      item.description?.toLowerCase().includes(kw) ||
-      item.sellerUsername?.toLowerCase().includes(kw)
-    );
-  });
+  // 검색은 서버사이드에서 처리되므로 goods를 그대로 사용
+  const searchFiltered = goods;
 
   // 크리에이터 필터 (카테고리 탭)
   const creatorFiltered = selectedCreator
@@ -579,14 +579,20 @@ function PreorderTab({ goods, loading }) {
 function PreorderCard({ item }) {
   const firstImage = item.options?.find((o) => o.imageUrl)?.imageUrl;
   const preview = item.options?.[0]?.shortDescription || stripHtml(item.description);
+  const expired = item.preorderDeadline && new Date(item.preorderDeadline) < new Date();
 
   return (
     <Link to={`/goods/${item.id}`} className="group bg-white rounded-2xl border border-gray-100 hover:border-indigo-200 hover:shadow-md transition-all overflow-hidden block">
-      <div className="h-48 bg-gray-100 overflow-hidden">
+      <div className="h-48 bg-gray-100 overflow-hidden relative">
         {firstImage ? (
           <img src={firstImage} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-5xl text-gray-200">📋</div>
+        )}
+        {expired && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="text-white font-bold text-sm bg-black/50 px-3 py-1 rounded-full">마감</span>
+          </div>
         )}
       </div>
       <div className="p-4">
@@ -598,8 +604,18 @@ function PreorderCard({ item }) {
           <span className="ml-auto text-[10px] bg-indigo-100 text-indigo-600 font-semibold px-2 py-0.5 rounded-full">수요조사</span>
         </div>
         <p className="text-sm font-semibold text-gray-800 mb-1 truncate">{item.name}</p>
-        {preview && <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed mb-3">{preview}</p>}
-        <p className="text-sm font-bold text-indigo-600">{Number(item.price).toLocaleString()}원~</p>
+        {preview && <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed mb-2">{preview}</p>}
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-bold text-indigo-600">{Number(item.price).toLocaleString()}원~</p>
+          {item.preorderCount != null && (
+            <span className="text-xs text-gray-400">{item.preorderCount}명 신청</span>
+          )}
+        </div>
+        {item.preorderDeadline && !expired && (
+          <p className="text-[10px] text-gray-400 mt-1">
+            마감: {new Date(item.preorderDeadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </p>
+        )}
       </div>
     </Link>
   );
@@ -643,14 +659,45 @@ function stripHtml(html) {
 function GoodsCard({ item, grid }) {
   const firstImage = item.options?.find((o) => o.imageUrl)?.imageUrl;
   const preview = item.options?.[0]?.shortDescription || stripHtml(item.description);
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const [wishlisted, setWishlisted] = useState(false);
+
+  const handleWishlist = async (e) => {
+    e.preventDefault();
+    if (!isAuthenticated) { navigate('/login'); return; }
+    try {
+      const res = await toggleWishlist(item.id);
+      setWishlisted(res.wishlisted);
+    } catch {
+      // 조용히 실패
+    }
+  };
 
   return (
-    <Link to={`/goods/${item.id}`} className={`group ${grid ? '' : 'flex-shrink-0 w-36 sm:w-48'}`}>
-      <div className="h-36 sm:h-48 bg-gray-100 rounded-xl overflow-hidden mb-2 sm:mb-2.5">
+    <Link to={`/goods/${item.id}`} className={`group relative ${grid ? '' : 'flex-shrink-0 w-36 sm:w-48'}`}>
+      <div className="relative h-36 sm:h-48 bg-gray-100 rounded-xl overflow-hidden mb-2 sm:mb-2.5">
         {firstImage ? (
           <img src={firstImage} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-4xl text-gray-300">🛍</div>
+        )}
+        {/* 하트 버튼 */}
+        {isAuthenticated && (
+          <button
+            onClick={handleWishlist}
+            className="absolute top-1.5 right-1.5 w-7 h-7 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-colors"
+            title={wishlisted ? '찜 취소' : '찜하기'}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24"
+              fill={wishlisted ? '#ef4444' : 'none'}
+              stroke={wishlisted ? '#ef4444' : '#9ca3af'}
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </button>
         )}
       </div>
       <div className="flex items-center gap-1.5 mb-1">

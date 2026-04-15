@@ -9,8 +9,12 @@ import shop.inst.shopdemo.dto.auth.AuthResponse;
 import shop.inst.shopdemo.dto.common.ApiResponse;
 import shop.inst.shopdemo.dto.seller.SellerApplyRequest;
 import shop.inst.shopdemo.dto.seller.SellerApplicationResponse;
+import shop.inst.shopdemo.dto.settlement.SettlementResponse;
 import shop.inst.shopdemo.security.UserPrincipal;
 import shop.inst.shopdemo.service.SellerApplicationService;
+import shop.inst.shopdemo.service.SettlementService;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/seller")
@@ -18,6 +22,7 @@ import shop.inst.shopdemo.service.SellerApplicationService;
 public class SellerController {
 
     private final SellerApplicationService sellerApplicationService;
+    private final SettlementService settlementService;
 
     /** 판매자 신청 → 즉시 SELLER 전환된 새 JWT 반환 */
     @PostMapping("/apply")
@@ -36,5 +41,13 @@ public class SellerController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sellerApplicationService.getMyApplication(principal.getUsername()).orElse(null)));
+    }
+
+    /** 내 정산 내역 조회 */
+    @GetMapping("/settlements")
+    public ResponseEntity<ApiResponse<List<SettlementResponse>>> getMySettlements(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(settlementService.getMySettlements(principal.getUsername())));
     }
 }

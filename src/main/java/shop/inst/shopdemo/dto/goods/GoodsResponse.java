@@ -45,6 +45,22 @@ public class GoodsResponse {
     private String rejectionReason;
     private Long sellerId;
     private String sellerUsername;
+
+    /** 사전수요조사 마감일 */
+    private LocalDateTime preorderDeadline;
+
+    /** 수요조사 신청 인원 수 */
+    private Long preorderCount;
+
+    /** 카테고리 */
+    private String category;
+
+    /** 태그 (콤마 구분) */
+    private String tags;
+
+    /** 추가 이미지 URL 목록 */
+    private List<String> additionalImages;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

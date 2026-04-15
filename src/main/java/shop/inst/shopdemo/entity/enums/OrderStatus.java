@@ -3,7 +3,8 @@ package shop.inst.shopdemo.entity.enums;
 public enum OrderStatus {
     PENDING_PAYMENT,   // 입금 대기
     PAYMENT_CONFIRMED, // 입금 확인 완료
-    SHIPPED,           // 배송 중
-    DELIVERED,         // 배송 완료 (구매자 수령 확인)
-    CANCELLED          // 취소
+    SHIPPED,            // 배송 중
+    DELIVERED,          // 배송 완료 (구매자 수령 확인)
+    CANCEL_REQUESTED,   // 취소 요청 (판매자 → 어드민 승인 대기)
+    CANCELLED           // 취소
 }

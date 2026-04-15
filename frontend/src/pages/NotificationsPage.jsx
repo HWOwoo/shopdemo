@@ -5,11 +5,15 @@ import Spinner from '../components/ui/Spinner';
 import Toast, { useToast } from '../components/ui/Toast';
 
 const TYPE_CONFIG = {
-  PAYMENT_CONFIRMED: { icon: '✅', cls: 'bg-green-50 border-green-200' },
-  ORDER_SHIPPED:     { icon: '🚚', cls: 'bg-blue-50 border-blue-200' },
-  ORDER_DELIVERED:   { icon: '📦', cls: 'bg-purple-50 border-purple-200' },
-  ORDER_CANCELLED:   { icon: '❌', cls: 'bg-red-50 border-red-200' },
-  REVIEW_RECEIVED:   { icon: '⭐', cls: 'bg-yellow-50 border-yellow-200' },
+  PAYMENT_CONFIRMED:    { icon: '✅', cls: 'bg-green-50 border-green-200' },
+  ORDER_SHIPPED:        { icon: '🚚', cls: 'bg-blue-50 border-blue-200' },
+  ORDER_DELIVERED:      { icon: '📦', cls: 'bg-purple-50 border-purple-200' },
+  ORDER_CANCELLED:      { icon: '❌', cls: 'bg-red-50 border-red-200' },
+  REVIEW_RECEIVED:      { icon: '⭐', cls: 'bg-yellow-50 border-yellow-200' },
+  PREORDER_REGISTERED:  { icon: '📋', cls: 'bg-indigo-50 border-indigo-200' },
+  PREORDER_CONFIRMED:   { icon: '🎉', cls: 'bg-emerald-50 border-emerald-200' },
+  PREORDER_CLOSED:      { icon: '🔒', cls: 'bg-orange-50 border-orange-200' },
+  GOODS_ON_SALE:        { icon: '🛍', cls: 'bg-pink-50 border-pink-200' },
 };
 
 function NotificationCard({ notification, onMarkRead }) {

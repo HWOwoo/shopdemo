@@ -39,6 +39,11 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String bio;
 
+    /** SNS 링크 */
+    private String twitterUrl;
+    private String pixivUrl;
+    private String instagramUrl;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

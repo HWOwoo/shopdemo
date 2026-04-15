@@ -5,9 +5,12 @@ import Spinner from '../components/ui/Spinner';
 import Toast, { useToast } from '../components/ui/Toast';
 
 const STATUS = {
-  PENDING_PAYMENT:  { label: '입금 대기',  cls: 'bg-yellow-100 text-yellow-700', icon: '⏳' },
-  PAYMENT_CONFIRMED:{ label: '입금 확인',  cls: 'bg-green-100 text-green-700',   icon: '✅' },
-  CANCELLED:        { label: '취소됨',     cls: 'bg-gray-100 text-gray-500',     icon: '❌' },
+  PENDING_PAYMENT:  { label: '입금 대기',     cls: 'bg-yellow-100 text-yellow-700', icon: '⏳' },
+  PAYMENT_CONFIRMED:{ label: '입금 확인',     cls: 'bg-green-100 text-green-700',   icon: '✅' },
+  SHIPPED:          { label: '배송 중',       cls: 'bg-blue-100 text-blue-700',     icon: '🚚' },
+  DELIVERED:        { label: '배송 완료',     cls: 'bg-indigo-100 text-indigo-700', icon: '📦' },
+  CANCEL_REQUESTED: { label: '취소 요청 중', cls: 'bg-orange-100 text-orange-700', icon: '🔄' },
+  CANCELLED:        { label: '취소됨',        cls: 'bg-gray-100 text-gray-500',     icon: '❌' },
 };
 
 const PURCHASE_TYPE = {
@@ -34,10 +37,25 @@ function InfoRow({ label, value }) {
   );
 }
 
-function OrderCard({ order }) {
+function OrderCard({ order, onConfirmDelivery, onCancel }) {
   const [expanded, setExpanded] = useState(false);
+  const [acting, setActing] = useState(false);
   const pt = PURCHASE_TYPE[order.purchaseType] ?? { label: order.purchaseType, icon: '' };
   const address = [order.postalCode, order.address, order.addressDetail].filter(Boolean).join(' ');
+
+  const handleConfirmDelivery = async () => {
+    if (!confirm('수령을 확인하시겠습니까?')) return;
+    setActing(true);
+    await onConfirmDelivery(order.id);
+    setActing(false);
+  };
+
+  const handleCancel = async () => {
+    if (!confirm('주문을 취소하시겠습니까?')) return;
+    setActing(true);
+    await onCancel(order.id);
+    setActing(false);
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -155,6 +173,17 @@ function OrderCard({ order }) {
             </section>
           )}
 
+          {/* 배송 정보 */}
+          {(order.courierName || order.trackingNumber) && (
+            <section>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">배송 정보</p>
+              <div className="space-y-1.5">
+                <InfoRow label="택배사" value={order.courierName} />
+                <InfoRow label="송장번호" value={order.trackingNumber} />
+              </div>
+            </section>
+          )}
+
           {/* 굿즈 페이지 링크 */}
           <Link
             to={`/goods/${order.goodsId}`}
@@ -162,6 +191,26 @@ function OrderCard({ order }) {
           >
             상품 페이지 보기 →
           </Link>
+
+          {/* 구매자 액션 버튼 */}
+          {order.status === 'SHIPPED' && (
+            <button
+              onClick={handleConfirmDelivery}
+              disabled={acting}
+              className="w-full py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            >
+              수령 확인
+            </button>
+          )}
+          {(order.status === 'PENDING_PAYMENT' || order.status === 'PAYMENT_CONFIRMED') && (
+            <button
+              onClick={handleCancel}
+              disabled={acting}
+              className="w-full py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              주문 취소
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -172,6 +221,9 @@ const FILTER_TABS = [
   { key: 'ALL', label: '전체' },
   { key: 'PENDING_PAYMENT', label: '입금 대기' },
   { key: 'PAYMENT_CONFIRMED', label: '입금 확인' },
+  { key: 'SHIPPED', label: '배송 중' },
+  { key: 'DELIVERED', label: '배송 완료' },
+  { key: 'CANCEL_REQUESTED', label: '취소 요청 중' },
   { key: 'CANCELLED', label: '취소' },
 ];
 
@@ -181,12 +233,34 @@ export default function MyOrdersPage() {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const { toast, show, hide } = useToast();
 
-  useEffect(() => {
+  const fetchOrders = () => {
     axiosClient.get('/seller/orders/my')
       .then((res) => setOrders(res.data.data || []))
       .catch(() => show('구매 내역을 불러오는 데 실패했습니다.', 'error'))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { fetchOrders(); }, []);
+
+  const handleConfirmDelivery = async (orderId) => {
+    try {
+      await axiosClient.put(`/seller/orders/my/${orderId}/confirm-delivery`);
+      show('수령이 확인되었습니다.', 'success');
+      fetchOrders();
+    } catch (err) {
+      show(err.response?.data?.message || '처리에 실패했습니다.', 'error');
+    }
+  };
+
+  const handleCancel = async (orderId) => {
+    try {
+      await axiosClient.put(`/seller/orders/my/${orderId}/cancel`);
+      show('주문이 취소되었습니다.', 'success');
+      fetchOrders();
+    } catch (err) {
+      show(err.response?.data?.message || '취소에 실패했습니다.', 'error');
+    }
+  };
 
   const filtered = filterStatus === 'ALL'
     ? orders
@@ -244,7 +318,12 @@ export default function MyOrdersPage() {
       ) : (
         <div className="flex flex-col gap-4">
           {filtered.map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <OrderCard
+              key={order.id}
+              order={order}
+              onConfirmDelivery={handleConfirmDelivery}
+              onCancel={handleCancel}
+            />
           ))}
         </div>
       )}

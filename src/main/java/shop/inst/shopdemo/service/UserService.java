@@ -33,11 +33,7 @@ public class UserService {
     public UserProfileResponse getPublicProfile(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
-        return UserProfileResponse.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .bio(user.getBio())
-                .build();
+        return toProfileResponse(user);
     }
 
     @Transactional
@@ -45,12 +41,11 @@ public class UserService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         user.setBio(request.getBio());
+        user.setTwitterUrl(request.getTwitterUrl());
+        user.setPixivUrl(request.getPixivUrl());
+        user.setInstagramUrl(request.getInstagramUrl());
         userRepository.save(user);
-        return UserProfileResponse.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .bio(user.getBio())
-                .build();
+        return toProfileResponse(user);
     }
 
     public List<AuthResponse> getAllUsers() {
@@ -62,5 +57,17 @@ public class UserService {
                         .role(u.getRole())
                         .build())
                 .toList();
+    }
+
+    private UserProfileResponse toProfileResponse(User user) {
+        return UserProfileResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .bio(user.getBio())
+                .role(user.getRole())
+                .twitterUrl(user.getTwitterUrl())
+                .pixivUrl(user.getPixivUrl())
+                .instagramUrl(user.getInstagramUrl())
+                .build();
     }
 }

@@ -20,6 +20,7 @@ public class OrderResponse {
 
     private Long buyerId;
     private String buyerUsername;
+    private String sellerUsername;
 
     private OrderStatus status;
     private PurchaseType purchaseType;
