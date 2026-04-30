@@ -112,6 +112,25 @@ public class ReviewService {
                 .toList();
     }
 
+    /** 굿즈 리뷰 통계: 평균 / 개수 / 1~5 분포 */
+    @Transactional(readOnly = true)
+    public shop.inst.shopdemo.dto.review.ReviewStatsResponse getStatsByGoods(Long goodsId) {
+        Double avg = reviewRepository.findAverageRatingByGoodsId(goodsId);
+        long count = reviewRepository.countByGoodsId(goodsId);
+        java.util.Map<Integer, Long> dist = new java.util.LinkedHashMap<>();
+        for (int i = 5; i >= 1; i--) dist.put(i, 0L);
+        for (Object[] row : reviewRepository.findRatingDistributionByGoodsId(goodsId)) {
+            Integer rating = ((Number) row[0]).intValue();
+            Long cnt = ((Number) row[1]).longValue();
+            dist.put(rating, cnt);
+        }
+        return shop.inst.shopdemo.dto.review.ReviewStatsResponse.builder()
+                .average(avg)
+                .count(count)
+                .distribution(dist)
+                .build();
+    }
+
     /** 리뷰 작성 가능한 상품 목록 (구매 이력 O, 리뷰 미작성) */
     @Transactional(readOnly = true)
     public List<ReviewableGoodsInfo> getReviewableGoods(String username) {

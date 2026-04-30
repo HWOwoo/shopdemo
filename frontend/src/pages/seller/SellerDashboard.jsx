@@ -5,6 +5,7 @@ import StatusBadge from '../../components/goods/StatusBadge';
 import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
 import Toast, { useToast } from '../../components/ui/Toast';
+import { useConfirm } from '../../components/ui/ConfirmModal';
 
 export default function SellerDashboard() {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ export default function SellerDashboard() {
   const [fetchError, setFetchError] = useState('');
   const [application, setApplication] = useState(null);
   const { toast, show, hide } = useToast();
+  const { confirm, ConfirmModal } = useConfirm();
 
   const fetchGoods = () => {
     setLoading(true);
@@ -31,7 +33,7 @@ export default function SellerDashboard() {
   }, []);
 
   const handleDelete = async (id) => {
-    if (!confirm('삭제하시겠습니까?')) return;
+    if (!await confirm('삭제하시겠습니까?')) return;
     try {
       await axiosClient.delete(`/goods/my/${id}`);
       show('상품이 삭제되었습니다.', 'success');
@@ -42,7 +44,7 @@ export default function SellerDashboard() {
   };
 
   const handleClose = async (id) => {
-    if (!confirm('판매를 종료하시겠습니까? 종료 후에는 되돌릴 수 없습니다.')) return;
+    if (!await confirm('판매를 종료하시겠습니까?', '종료 후에는 되돌릴 수 없습니다.')) return;
     try {
       await axiosClient.put(`/goods/my/${id}/close`);
       show('판매가 종료되었습니다.', 'success');
@@ -54,7 +56,7 @@ export default function SellerDashboard() {
 
   const handleToggleSoldOut = async (id, currentlySoldOut) => {
     const msg = currentlySoldOut ? '품절 해제하시겠습니까?' : '품절 처리하시겠습니까?';
-    if (!confirm(msg)) return;
+    if (!await confirm(msg)) return;
     try {
       await axiosClient.put(`/goods/my/${id}/soldout`);
       show(currentlySoldOut ? '품절이 해제되었습니다.' : '품절 처리되었습니다.', 'success');
@@ -65,7 +67,7 @@ export default function SellerDashboard() {
   };
 
   const handleConfirmPreorder = async (id) => {
-    if (!confirm('생산을 확정하시겠습니까? 수요조사가 통판으로 전환되며, 신청자에게 알림이 발송됩니다.')) return;
+    if (!await confirm('생산을 확정하시겠습니까?', '수요조사가 통판으로 전환되며, 신청자에게 알림이 발송됩니다.')) return;
     try {
       await axiosClient.post(`/goods/my/${id}/preorder-confirm`);
       show('생산이 확정되었습니다. 신청자에게 알림이 발송되었습니다.', 'success');
@@ -77,6 +79,7 @@ export default function SellerDashboard() {
 
   return (
     <div>
+      <ConfirmModal />
       <Toast toast={toast} onClose={hide} />
 
       {/* 판매자 승인 상태 배너 */}

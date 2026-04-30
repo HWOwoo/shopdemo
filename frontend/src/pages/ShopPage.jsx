@@ -3,6 +3,22 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../store/authStore';
 import { toggleWishlist } from '../api/wishlist';
+import { getNoticeBanner } from '../api/notice';
+
+const CATEGORIES = ['아크릴 스탠드', '포토카드', '포스터', '키링', '에코백', '동인지', '기타'];
+
+const SORT_OPTIONS_SALE = [
+  { key: 'latest', label: '최신순' },
+  { key: 'priceAsc', label: '낮은 가격순' },
+  { key: 'priceDesc', label: '높은 가격순' },
+];
+
+const SORT_OPTIONS_PREORDER = [
+  { key: 'latest', label: '최신순' },
+  { key: 'deadlineAsc', label: '마감 임박순' },
+  { key: 'priceAsc', label: '낮은 가격순' },
+  { key: 'priceDesc', label: '높은 가격순' },
+];
 
 const DEFAULT_QUICK_KEYWORDS = [
   { label: '#서코', query: '서코', color: 'from-orange-400 to-red-500' },
@@ -102,6 +118,7 @@ export default function ShopPage() {
   const [mainTab, setMainTab] = useState('통판');
   const [activeTab, setActiveTab] = useState('홈');
   const [bannerIdx, setBannerIdx] = useState(0);
+  const [noticeBanner, setNoticeBanner] = useState([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const [keywords, setKeywords] = useState(() => {
     try {
@@ -116,10 +133,12 @@ export default function ShopPage() {
 
   const selectedCreator = searchParams.get('creator') || '';
   const searchQuery = searchParams.get('q') || '';
+  const selectedCategory = searchParams.get('category') || '';
+  const selectedSort = searchParams.get('sort') || 'latest';
 
-  const fetchGoods = (query) => {
+  const fetchGoods = (query, sort) => {
     setLoading(true);
-    const params = new URLSearchParams({ page: '0', size: '40', type: 'SALE' });
+    const params = new URLSearchParams({ page: '0', size: '100', type: 'SALE', sort: sort || 'latest' });
     if (query) params.set('keyword', query);
     axiosClient
       .get(`/goods?${params}`)
@@ -127,9 +146,9 @@ export default function ShopPage() {
       .finally(() => setLoading(false));
   };
 
-  const fetchPreorder = (query) => {
+  const fetchPreorder = (query, sort) => {
     setPreorderLoading(true);
-    const params = new URLSearchParams({ page: '0', size: '40', type: 'PREORDER' });
+    const params = new URLSearchParams({ page: '0', size: '100', type: 'PREORDER', sort: sort || 'latest' });
     if (query) params.set('keyword', query);
     axiosClient
       .get(`/goods?${params}`)
@@ -137,14 +156,20 @@ export default function ShopPage() {
       .finally(() => setPreorderLoading(false));
   };
 
-  useEffect(() => { fetchGoods(searchQuery); }, [searchQuery]);
-  useEffect(() => { fetchPreorder(searchQuery); }, [searchQuery]);
+  useEffect(() => { fetchGoods(searchQuery, selectedSort); }, [searchQuery, selectedSort]);
+  useEffect(() => { fetchPreorder(searchQuery, selectedSort); }, [searchQuery, selectedSort]);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setBannerIdx((i) => (i + 1) % BANNERS.length);
     }, 4000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    getNoticeBanner(3)
+      .then(setNoticeBanner)
+      .catch(() => setNoticeBanner([]));
   }, []);
 
   // URL 파라미터에 따라 탭 전환
@@ -162,13 +187,22 @@ export default function ShopPage() {
 
   const creators = extractCreators(goods);
 
-  // 검색은 서버사이드에서 처리되므로 goods를 그대로 사용
-  const searchFiltered = goods;
+  // 카테고리 필터 (클라이언트사이드)
+  const categoryFiltered = selectedCategory
+    ? goods.filter((item) => item.category === selectedCategory)
+    : goods;
+
+  const preorderCategoryFiltered = selectedCategory
+    ? preorderGoods.filter((item) => item.category === selectedCategory)
+    : preorderGoods;
+
+  // 검색은 서버사이드에서 처리되므로 카테고리 필터 적용
+  const searchFiltered = categoryFiltered;
 
   // 크리에이터 필터 (카테고리 탭)
   const creatorFiltered = selectedCreator
-    ? goods.filter((item) => item.sellerUsername === selectedCreator)
-    : goods;
+    ? categoryFiltered.filter((item) => item.sellerUsername === selectedCreator)
+    : categoryFiltered;
 
   const prevBanner = BANNERS[(bannerIdx - 1 + BANNERS.length) % BANNERS.length];
   const currBanner = BANNERS[bannerIdx];
@@ -207,6 +241,31 @@ export default function ShopPage() {
 
   return (
     <div>
+      {/* ===== 공지사항 배너 ===== */}
+      {noticeBanner.length > 0 && (
+        <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 flex items-center gap-2 overflow-hidden">
+          <span className="flex-shrink-0 text-xs font-bold text-indigo-600 bg-white px-2 py-0.5 rounded-full">📢 공지</span>
+          <div className="flex-1 min-w-0 flex items-center gap-4 overflow-x-auto scrollbar-none">
+            {noticeBanner.map((n) => (
+              <Link
+                key={n.id}
+                to={`/notices/${n.id}`}
+                className="text-sm text-gray-700 hover:text-indigo-700 truncate flex items-center gap-1.5 flex-shrink-0"
+              >
+                {n.pinned && <span className="text-[10px] font-bold text-indigo-700">[고정]</span>}
+                <span className="truncate">{n.title}</span>
+              </Link>
+            ))}
+          </div>
+          <Link
+            to="/notices"
+            className="flex-shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 hidden sm:inline"
+          >
+            전체보기 →
+          </Link>
+        </div>
+      )}
+
       {/* ===== 전역 배너 캐러셀 ===== */}
       <div className="flex gap-3 mb-5 items-stretch">
         <div className="hidden lg:block w-44 flex-shrink-0">
@@ -359,6 +418,66 @@ export default function ShopPage() {
         ))}
       </div>
 
+      {/* ===== 카테고리 필터 칩 + 정렬 ===== */}
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none flex-1 min-w-0">
+          <button
+            onClick={() => setSearchParams((prev) => { const p = new URLSearchParams(prev); p.delete('category'); return p; })}
+            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+              !selectedCategory
+                ? 'bg-gray-900 text-white border-gray-900'
+                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-700'
+            }`}
+          >
+            전체
+          </button>
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSearchParams((prev) => { const p = new URLSearchParams(prev); p.set('category', cat); return p; })}
+              className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                selectedCategory === cat
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        <select
+          value={selectedSort}
+          onChange={(e) => setSearchParams((prev) => {
+            const p = new URLSearchParams(prev);
+            if (e.target.value === 'latest') p.delete('sort');
+            else p.set('sort', e.target.value);
+            return p;
+          })}
+          className="flex-shrink-0 text-sm bg-white border border-gray-200 rounded-full px-3 py-1.5 text-gray-600 hover:border-gray-400 focus:outline-none focus:border-indigo-400 cursor-pointer"
+        >
+          {(mainTab === '사전수요조사' ? SORT_OPTIONS_PREORDER : SORT_OPTIONS_SALE).map((opt) => (
+            <option key={opt.key} value={opt.key}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* 카테고리 필터 알림 */}
+      {selectedCategory && !searchQuery && (
+        <div className="flex items-center gap-3 mb-5 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+          <span className="text-indigo-500">🏷️</span>
+          <span className="text-sm text-indigo-700">
+            <strong>{selectedCategory}</strong> 카테고리 — {mainTab === '사전수요조사' ? preorderCategoryFiltered.length : categoryFiltered.length}개
+          </span>
+          <button
+            onClick={() => setSearchParams((prev) => { const p = new URLSearchParams(prev); p.delete('category'); return p; })}
+            className="ml-auto text-xs text-indigo-400 hover:text-indigo-600"
+          >
+            ✕ 초기화
+          </button>
+        </div>
+      )}
+
       {/* 검색 결과 알림 */}
       {searchQuery && (
         <div className="flex items-center gap-3 mb-6 p-3 bg-blue-50 rounded-xl border border-blue-100">
@@ -377,7 +496,7 @@ export default function ShopPage() {
 
       {/* ===== 사전수요조사 탭 ===== */}
       {mainTab === '사전수요조사' && (
-        <PreorderTab goods={preorderGoods} loading={preorderLoading} />
+        <PreorderTab goods={preorderCategoryFiltered} loading={preorderLoading} />
       )}
 
       {/* ===== 통판 탭 내부 서브탭 ===== */}
@@ -406,52 +525,25 @@ export default function ShopPage() {
       {/* ========== 홈 탭 ========== */}
       {activeTab === '홈' && !searchQuery && (
         <>
-          {/* 크리에이터 아이콘 행 */}
-          {loading ? (
-            <div className="flex gap-6 mb-10">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center gap-2 animate-pulse flex-shrink-0">
-                  <div className="w-16 h-16 rounded-full bg-gray-200" />
-                  <div className="w-12 h-2.5 bg-gray-200 rounded" />
-                </div>
-              ))}
-            </div>
-          ) : creators.length > 0 ? (
-            <div className="flex gap-6 mb-10 overflow-x-auto pb-1">
-              {creators.map((creator) => (
-                <button
-                  key={creator.username}
-                  onClick={() => selectCreator(creator.username)}
-                  className="flex flex-col items-center gap-2 flex-shrink-0 group"
-                >
-                  <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${getAvatarGradient(creator.username)} flex items-center justify-center text-white text-sm font-bold group-hover:scale-110 transition-transform duration-150 shadow-sm`}>
-                    {getInitials(creator.username)}
-                  </div>
-                  <span className="text-xs text-gray-600 text-center leading-tight max-w-16 truncate w-full">{creator.username}</span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-
           {/* HOT 굿즈 */}
           <section className="mb-10">
-            <SectionHeader title="HOT 굿즈" />
-            {loading ? <SkeletonRow /> : goods.length === 0 ? (
+            <SectionHeader title={selectedCategory ? `${selectedCategory} HOT 굿즈` : 'HOT 굿즈'} />
+            {loading ? <SkeletonRow /> : categoryFiltered.length === 0 ? (
               <p className="text-sm text-gray-400 py-8 text-center">등록된 굿즈가 없습니다.</p>
             ) : (
               <HorizontalScroll>
-                {goods.map((item) => <GoodsCard key={item.id} item={item} />)}
+                {categoryFiltered.map((item) => <GoodsCard key={item.id} item={item} />)}
               </HorizontalScroll>
             )}
           </section>
 
           {/* 신규 굿즈 */}
-          {goods.length > 0 && (
+          {categoryFiltered.length > 0 && (
             <section className="mb-10">
               <SectionHeader title="신규 굿즈" />
               {loading ? <SkeletonRow /> : (
                 <HorizontalScroll>
-                  {[...goods].reverse().map((item) => <GoodsCard key={item.id} item={item} />)}
+                  {[...categoryFiltered].reverse().map((item) => <GoodsCard key={item.id} item={item} />)}
                 </HorizontalScroll>
               )}
             </section>
@@ -607,9 +699,17 @@ function PreorderCard({ item }) {
         {preview && <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed mb-2">{preview}</p>}
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold text-indigo-600">{Number(item.price).toLocaleString()}원~</p>
-          {item.preorderCount != null && (
-            <span className="text-xs text-gray-400">{item.preorderCount}명 신청</span>
-          )}
+          <div className="flex items-center gap-2 text-xs">
+            {item.reviewCount > 0 && (
+              <span className="text-gray-500 flex items-center gap-0.5">
+                <span className="text-yellow-400">★</span>
+                {item.averageRating?.toFixed(1)}
+              </span>
+            )}
+            {item.preorderCount != null && (
+              <span className="text-gray-400">{item.preorderCount}명 신청</span>
+            )}
+          </div>
         </div>
         {item.preorderDeadline && !expired && (
           <p className="text-[10px] text-gray-400 mt-1">
@@ -708,7 +808,15 @@ function GoodsCard({ item, grid }) {
       </div>
       <p className="text-xs text-gray-500 truncate">{item.name}</p>
       {preview && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">{preview}</p>}
-      <p className="text-xs font-bold text-blue-600 mt-1.5">{Number(item.price).toLocaleString()}원</p>
+      <div className="flex items-center justify-between mt-1.5 gap-1">
+        <p className="text-xs font-bold text-blue-600">{Number(item.price).toLocaleString()}원</p>
+        {item.reviewCount > 0 && (
+          <span className="text-[10px] text-gray-500 flex items-center gap-0.5 flex-shrink-0">
+            <span className="text-yellow-400">★</span>
+            {item.averageRating?.toFixed(1)} <span className="text-gray-400">({item.reviewCount})</span>
+          </span>
+        )}
+      </div>
     </Link>
   );
 }

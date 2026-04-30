@@ -9,6 +9,7 @@ import shop.inst.shopdemo.dto.auth.AuthResponse;
 import shop.inst.shopdemo.dto.common.ApiResponse;
 import shop.inst.shopdemo.dto.seller.SellerApplyRequest;
 import shop.inst.shopdemo.dto.seller.SellerApplicationResponse;
+import shop.inst.shopdemo.dto.settlement.SettlementAvailableResponse;
 import shop.inst.shopdemo.dto.settlement.SettlementResponse;
 import shop.inst.shopdemo.security.UserPrincipal;
 import shop.inst.shopdemo.service.SellerApplicationService;
@@ -49,5 +50,21 @@ public class SellerController {
             @AuthenticationPrincipal UserPrincipal principal
     ) {
         return ResponseEntity.ok(ApiResponse.success(settlementService.getMySettlements(principal.getUsername())));
+    }
+
+    /** 신청 가능한 정산 누적분 조회 */
+    @GetMapping("/settlements/available")
+    public ResponseEntity<ApiResponse<SettlementAvailableResponse>> getAvailableSettlement(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(settlementService.getAvailable(principal.getUsername())));
+    }
+
+    /** 정산 신청 */
+    @PostMapping("/settlements/request")
+    public ResponseEntity<ApiResponse<SettlementResponse>> requestSettlement(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(settlementService.requestSettlement(principal.getUsername())));
     }
 }

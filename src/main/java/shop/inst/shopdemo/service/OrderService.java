@@ -49,6 +49,10 @@ public class OrderService {
             throw new BadRequestException("구매할 수 없는 상품입니다.");
         }
 
+        if (goods.getSeller().getUsername().equals(buyerUsername)) {
+            throw new BadRequestException("자신의 상품은 구매할 수 없습니다.");
+        }
+
         if (req.getItems() == null || req.getItems().isEmpty()) {
             throw new BadRequestException("주문 항목이 없습니다.");
         }
@@ -210,6 +214,24 @@ public class OrderService {
         return orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.CANCEL_REQUESTED).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    // 어드민: 전체 주문 조회 (status 필터)
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getAllOrders(String statusFilter) {
+        List<Order> orders;
+        if (statusFilter == null || statusFilter.isBlank() || "ALL".equalsIgnoreCase(statusFilter)) {
+            orders = orderRepository.findAllWithGoodsAndUsers();
+        } else {
+            OrderStatus status;
+            try {
+                status = OrderStatus.valueOf(statusFilter.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("잘못된 주문 상태입니다: " + statusFilter);
+            }
+            orders = orderRepository.findAllByStatusWithGoodsAndUsers(status);
+        }
+        return orders.stream().map(this::toResponse).toList();
     }
 
     // 어드민: 취소 승인

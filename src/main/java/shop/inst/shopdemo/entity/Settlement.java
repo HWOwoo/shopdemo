@@ -47,8 +47,18 @@ public class Settlement {
     @Builder.Default
     private SettlementStatus status = SettlementStatus.PENDING;
 
+    /** 판매자 신청 시각 (어드민 직접 생성 건은 null) */
+    private LocalDateTime requestedAt;
+
     /** 정산 완료일 */
     private LocalDateTime paidAt;
+
+    /** 거절 시각 */
+    private LocalDateTime rejectedAt;
+
+    /** 거절 사유 */
+    @Column(length = 500)
+    private String rejectedReason;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

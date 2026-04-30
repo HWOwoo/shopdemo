@@ -4,6 +4,7 @@ import axiosClient from '../../api/axiosClient';
 import Spinner from '../../components/ui/Spinner';
 import Button from '../../components/ui/Button';
 import Toast, { useToast } from '../../components/ui/Toast';
+import { useConfirm } from '../../components/ui/ConfirmModal';
 
 const STATUS_LABEL = {
   PENDING:  { label: '심사 중',  cls: 'bg-gray-100 text-gray-600' },
@@ -24,10 +25,12 @@ export default function SellerPreordersPage() {
   const { goodsId } = useParams();
   const navigate = useNavigate();
   const { toast, show, hide } = useToast();
+  const { confirm, ConfirmModal } = useConfirm();
 
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const fetchSummary = () => {
     setLoading(true);
@@ -42,7 +45,7 @@ export default function SellerPreordersPage() {
   }, [goodsId]);
 
   const handleConfirm = async () => {
-    if (!confirm('생산을 확정하시겠습니까? 수요조사가 통판으로 전환되며 신청자에게 알림이 발송됩니다.')) return;
+    if (!await confirm('생산을 확정하시겠습니까?', '수요조사가 통판으로 전환되며 신청자에게 알림이 발송됩니다.')) return;
     setConfirming(true);
     try {
       await axiosClient.post(`/goods/my/${goodsId}/preorder-confirm`);
@@ -55,6 +58,20 @@ export default function SellerPreordersPage() {
     }
   };
 
+  const handleCancel = async () => {
+    if (!await confirm('생산을 취소하시겠습니까?', '신청자들에게 취소 알림이 발송됩니다.')) return;
+    setCancelling(true);
+    try {
+      await axiosClient.post(`/goods/my/${goodsId}/preorder-cancel`);
+      show('생산이 취소되었습니다. 신청자에게 알림이 발송되었습니다.', 'success');
+      fetchSummary();
+    } catch (err) {
+      show(err.response?.data?.message || '처리에 실패했습니다.', 'error');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-16"><Spinner /></div>;
   if (!summary) return null;
 
@@ -63,6 +80,7 @@ export default function SellerPreordersPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+      <ConfirmModal />
       <Toast toast={toast} onClose={hide} />
 
       {/* 헤더 */}
@@ -107,9 +125,14 @@ export default function SellerPreordersPage() {
       {canConfirm && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
           <p className="text-sm text-indigo-700 flex-1">수요조사가 마감되었습니다. 생산 여부를 결정해주세요.</p>
-          <Button onClick={handleConfirm} disabled={confirming} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg">
-            {confirming ? '처리 중...' : '생산 확정'}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleCancel} disabled={cancelling || confirming} className="bg-white hover:bg-gray-50 text-gray-600 border border-gray-300 text-sm px-4 py-2 rounded-lg">
+              {cancelling ? '처리 중...' : '생산 취소'}
+            </Button>
+            <Button onClick={handleConfirm} disabled={confirming || cancelling} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg">
+              {confirming ? '처리 중...' : '생산 확정'}
+            </Button>
+          </div>
         </div>
       )}
 

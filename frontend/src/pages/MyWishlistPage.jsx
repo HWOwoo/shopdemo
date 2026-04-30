@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { getMyWishlist, toggleWishlist } from '../api/wishlist';
 import Spinner from '../components/ui/Spinner';
 import Toast, { useToast } from '../components/ui/Toast';
+import { useConfirm } from '../components/ui/ConfirmModal';
 
 export default function MyWishlistPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const { toast, show, hide } = useToast();
+  const { confirm, ConfirmModal } = useConfirm();
 
   const fetchWishlist = () => {
     setLoading(true);
@@ -20,7 +22,7 @@ export default function MyWishlistPage() {
   useEffect(() => { fetchWishlist(); }, []);
 
   const handleRemove = async (goodsId) => {
-    if (!confirm('찜 목록에서 삭제하시겠습니까?')) return;
+    if (!await confirm('찜 목록에서 삭제하시겠습니까?')) return;
     try {
       await toggleWishlist(goodsId);
       setItems((prev) => prev.filter((item) => item.goodsId !== goodsId));
@@ -34,6 +36,7 @@ export default function MyWishlistPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      <ConfirmModal />
       <Toast toast={toast} onClose={hide} />
 
       <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">내 찜 목록</h1>

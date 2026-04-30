@@ -17,9 +17,16 @@ axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      const url = error.config?.url || '';
+      const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
+      const isOnLoginPage = window.location.pathname === '/login';
+
+      if (!isAuthEndpoint && !isOnLoginPage) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        const redirect = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/login?expired=1&redirect=${redirect}`;
+      }
     }
     return Promise.reject(error);
   }

@@ -19,6 +19,9 @@ public class SettlementResponse {
     private LocalDate periodStart;
     private LocalDate periodEnd;
     private SettlementStatus status;
+    private LocalDateTime requestedAt;
     private LocalDateTime paidAt;
+    private LocalDateTime rejectedAt;
+    private String rejectedReason;
     private LocalDateTime createdAt;
 }

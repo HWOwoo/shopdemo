@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../store/authStore';
 import axiosClient from '../../api/axiosClient';
+import { getChatUnreadCount } from '../../api/chat';
 
 const AVATAR_GRADIENTS = [
   'from-blue-400 to-purple-500',
@@ -33,6 +34,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const menuRef = useRef(null);
   const searchInputRef = useRef(null);
 
@@ -62,6 +64,19 @@ export default function Navbar() {
     };
     fetchCount();
     const interval = setInterval(fetchCount, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  // 채팅 안읽은 메시지 개수 폴링
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const fetchChatCount = () => {
+      getChatUnreadCount()
+        .then((data) => setChatUnreadCount(data?.count ?? 0))
+        .catch(() => {});
+    };
+    fetchChatCount();
+    const interval = setInterval(fetchChatCount, 30000);
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
@@ -139,6 +154,23 @@ export default function Navbar() {
           </Link>
         )}
 
+        {/* 채팅 아이콘 */}
+        {isAuthenticated && (
+          <Link
+            to="/chat"
+            className="relative p-1.5 text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            {chatUnreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {chatUnreadCount > 9 ? '9+' : chatUnreadCount}
+              </span>
+            )}
+          </Link>
+        )}
+
         {/* 알림 벨 */}
         {isAuthenticated && (
           <Link
@@ -177,17 +209,8 @@ export default function Navbar() {
                 {/* BUYER */}
                 {user?.role === 'BUYER' && (
                   <>
-                    <Link to="/my/orders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">🧾</span> 구매 내역
-                    </Link>
-                    <Link to="/my/wishlist" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">🤍</span> 찜 목록
-                    </Link>
-                    <Link to="/my/preorders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">📋</span> 내 수요조사
-                    </Link>
-                    <Link to="/my/reviews" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">⭐</span> 내 리뷰
+                    <Link to="/my" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">🧾</span> 마이페이지
                     </Link>
                     <Link to="/seller/apply" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <span className="text-base">🏪</span> 판매자 신청
@@ -198,26 +221,11 @@ export default function Navbar() {
                 {/* SELLER */}
                 {user?.role === 'SELLER' && (
                   <>
-                    <Link to="/my/orders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">🧾</span> 구매 내역
-                    </Link>
-                    <Link to="/my/wishlist" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">🤍</span> 찜 목록
-                    </Link>
-                    <Link to="/my/preorders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">📋</span> 내 수요조사
-                    </Link>
-                    <Link to="/my/reviews" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">⭐</span> 내 리뷰
+                    <Link to="/my" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <span className="text-base">🧾</span> 마이페이지
                     </Link>
                     <Link to="/seller/dashboard" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">📊</span> 판매자 대시보드
-                    </Link>
-                    <Link to="/seller/orders" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">📦</span> 주문 관리
-                    </Link>
-                    <Link to="/seller/settlements" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">💰</span> 정산 내역
+                      <span className="text-base">📊</span> 판매 관리
                     </Link>
                     <Link to="/seller/goods/new" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors sm:hidden">
                       <span className="text-base">➕</span> 굿즈 등록
@@ -227,25 +235,19 @@ export default function Navbar() {
 
                 {/* ADMIN */}
                 {user?.role === 'ADMIN' && (
-                  <>
-                    <Link to="/admin/dashboard" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">🛠</span> 관리자 대시보드
-                    </Link>
-                    <Link to="/admin/goods/pending" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors sm:hidden">
-                      <span className="text-base">⏳</span> 굿즈 심사 대기
-                    </Link>
-                    <Link to="/admin/seller-applications" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">📋</span> 판매자 신청 관리
-                    </Link>
-                    <Link to="/admin/orders/cancel-requests" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">🔴</span> 주문 취소 요청
-                    </Link>
-                    <Link to="/admin/settlements" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <span className="text-base">💰</span> 정산 관리
-                    </Link>
-                  </>
+                  <Link to="/admin/dashboard" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                    <span className="text-base">🛠</span> 관리자 패널
+                  </Link>
                 )}
 
+                <Link to="/chat" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                  <span className="text-base">💬</span> 메시지
+                  {chatUnreadCount > 0 && (
+                    <span className="ml-auto px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full">
+                      {chatUnreadCount > 9 ? '9+' : chatUnreadCount}
+                    </span>
+                  )}
+                </Link>
                 <Link to="/notifications" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                   <span className="text-base">🔔</span> 알림
                   {unreadCount > 0 && (
@@ -253,6 +255,9 @@ export default function Navbar() {
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
+                </Link>
+                <Link to="/notices" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                  <span className="text-base">📢</span> 공지사항
                 </Link>
                 <Link to="/profile/edit" onClick={close} className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                   <span className="text-base">✏️</span> 프로필 편집

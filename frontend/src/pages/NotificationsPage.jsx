@@ -14,6 +14,10 @@ const TYPE_CONFIG = {
   PREORDER_CONFIRMED:   { icon: '🎉', cls: 'bg-emerald-50 border-emerald-200' },
   PREORDER_CLOSED:      { icon: '🔒', cls: 'bg-orange-50 border-orange-200' },
   GOODS_ON_SALE:        { icon: '🛍', cls: 'bg-pink-50 border-pink-200' },
+  SETTLEMENT_REQUESTED: { icon: '💰', cls: 'bg-amber-50 border-amber-200' },
+  SETTLEMENT_APPROVED:  { icon: '✅', cls: 'bg-green-50 border-green-200' },
+  SETTLEMENT_REJECTED:  { icon: '🚫', cls: 'bg-red-50 border-red-200' },
+  SETTLEMENT_PAID:      { icon: '💸', cls: 'bg-emerald-50 border-emerald-200' },
 };
 
 function NotificationCard({ notification, onMarkRead }) {

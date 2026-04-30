@@ -13,7 +13,18 @@
       "Bash(git fetch:*)",
       "Bash(git clean:*)",
       "Bash(./gradlew build:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Skill(update-config)",
+      "Bash(./mvnw compile *)",
+      "Bash(ls *.xml *.gradle*)",
+      "Bash(grep \"bin/java$\")",
+      "Bash(xargs cat *)",
+      "Read(//usr/lib/**)",
+      "Read(//home/nelap1234/.sdkman/candidates/**)",
+      "Bash(find / -name \"javac\" -type f)",
+      "Read(//home/nelap1234/**)",
+      "Read(//opt/**)",
+      "Read(//mnt/c/Users/nelap1234/**)"
     ]
   }
 }

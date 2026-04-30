@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
+import { getOrCreateRoom } from '../api/chat';
+import { useAuth } from '../store/authStore';
 import Spinner from '../components/ui/Spinner';
 
 const AVATAR_GRADIENTS = [
@@ -26,10 +28,29 @@ function getInitials(username) {
 
 export default function SellerProfilePage() {
   const { username } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated, user: currentUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [goods, setGoods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+
+  const handleMessageClick = async () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    setChatLoading(true);
+    try {
+      const room = await getOrCreateRoom(username);
+      navigate(`/chat/${room.roomId}`);
+    } catch {
+      // ignore
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -87,6 +108,20 @@ export default function SellerProfilePage() {
                     {link.label}
                   </a>
                 ))}
+              </div>
+            )}
+            {currentUser?.username !== username && (
+              <div className="mt-4 flex justify-center sm:justify-start">
+                <button
+                  onClick={handleMessageClick}
+                  disabled={chatLoading}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  {chatLoading ? '연결 중...' : '메시지'}
+                </button>
               </div>
             )}
           </div>

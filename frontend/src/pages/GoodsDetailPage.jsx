@@ -4,9 +4,11 @@ import DOMPurify from 'dompurify';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../store/authStore';
 import { toggleWishlist, checkWishlistStatus } from '../api/wishlist';
+import { getOrCreateRoom } from '../api/chat';
 import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
 import Toast, { useToast } from '../components/ui/Toast';
+import { useConfirm } from '../components/ui/ConfirmModal';
 import PurchaseSection from '../components/purchase/PurchaseSection';
 
 const AVATAR_GRADIENTS = [
@@ -30,14 +32,124 @@ function getInitials(username) {
   return username.slice(0, 2).toUpperCase();
 }
 
+function StarsReadOnly({ rating, size = 'sm' }) {
+  const cls = size === 'lg' ? 'text-xl' : 'text-sm';
+  return (
+    <span className="inline-flex">
+      {[1, 2, 3, 4, 5].map((v) => (
+        <span key={v} className={`${cls} ${v <= Math.round(rating) ? 'text-yellow-400' : 'text-gray-200'}`}>★</span>
+      ))}
+    </span>
+  );
+}
+
+function ReviewsSection({ goodsId }) {
+  const [stats, setStats] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      axiosClient.get(`/reviews/goods/${goodsId}/stats`).then((r) => r.data.data),
+      axiosClient.get(`/reviews/goods/${goodsId}`).then((r) => r.data.data || []),
+    ])
+      .then(([s, list]) => { setStats(s); setReviews(list); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [goodsId]);
+
+  if (loading) return null;
+  if (!stats || stats.count === 0) {
+    return (
+      <section className="mt-10">
+        <h2 className="text-base font-bold text-gray-800 mb-4">리뷰</h2>
+        <p className="text-sm text-gray-400 py-12 text-center bg-gray-50 rounded-2xl border border-gray-100">
+          아직 작성된 리뷰가 없습니다.
+        </p>
+      </section>
+    );
+  }
+
+  const maxCount = Math.max(...Object.values(stats.distribution || {}));
+
+  return (
+    <section className="mt-10">
+      <h2 className="text-base font-bold text-gray-800 mb-4">리뷰 ({stats.count})</h2>
+
+      {/* 통계 헤더 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-5 bg-gray-50 rounded-2xl border border-gray-100 mb-6">
+        <div className="flex flex-col items-center justify-center">
+          <p className="text-4xl font-bold text-gray-800">{stats.average?.toFixed(1)}</p>
+          <StarsReadOnly rating={stats.average || 0} size="lg" />
+          <p className="text-xs text-gray-400 mt-1">{stats.count}개의 리뷰</p>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          {[5, 4, 3, 2, 1].map((r) => {
+            const c = stats.distribution?.[r] || 0;
+            const pct = maxCount > 0 ? (c / maxCount) * 100 : 0;
+            return (
+              <div key={r} className="flex items-center gap-2 text-xs">
+                <span className="text-gray-500 w-4">{r}점</span>
+                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-yellow-400" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="text-gray-500 w-8 text-right">{c}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 리뷰 리스트 */}
+      <div className="space-y-3">
+        {reviews.map((rev) => (
+          <div key={rev.id} className="bg-white rounded-xl border border-gray-100 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${getAvatarGradient(rev.reviewerUsername)} flex items-center justify-center text-white text-[10px] font-bold`}>
+                {getInitials(rev.reviewerUsername)}
+              </div>
+              <span className="text-sm font-semibold text-gray-700">{rev.reviewerUsername}</span>
+              <StarsReadOnly rating={rev.rating} />
+              <span className="ml-auto text-xs text-gray-400">{new Date(rev.createdAt).toLocaleDateString('ko-KR')}</span>
+            </div>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{rev.content}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function SellerProfileCard({ username }) {
   const [profile, setProfile] = useState(null);
+  const [chatLoading, setChatLoading] = useState(false);
+  const { isAuthenticated, user: currentUser } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     axiosClient.get(`/users/${username}/profile`)
       .then((res) => setProfile(res.data.data))
       .catch(() => {});
   }, [username]);
+
+  const handleMessageClick = async () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    setChatLoading(true);
+    try {
+      const room = await getOrCreateRoom(username);
+      navigate(`/chat/${room.roomId}`);
+    } catch {
+      // ignore
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const isSelf = currentUser?.username === username;
 
   return (
     <div className="mt-8 flex flex-col items-center text-center py-8 px-6 bg-gray-50 rounded-2xl border border-gray-100">
@@ -54,6 +166,29 @@ function SellerProfileCard({ username }) {
       ) : (
         <p className="mt-2 text-sm text-gray-300">아직 자기소개가 없습니다.</p>
       )}
+      <div className="mt-4 flex gap-2">
+        {!isSelf && (
+          <button
+            onClick={handleMessageClick}
+            disabled={chatLoading}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            {chatLoading ? '연결 중...' : '메시지'}
+          </button>
+        )}
+        <Link
+          to={`/seller/${username}`}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          판매자 페이지
+        </Link>
+      </div>
     </div>
   );
 }
@@ -121,6 +256,7 @@ export default function GoodsDetailPage() {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const { toast, show, hide } = useToast();
+  const { confirm, ConfirmModal } = useConfirm();
 
   useEffect(() => {
     axiosClient.get(`/goods/${id}`)
@@ -133,9 +269,12 @@ export default function GoodsDetailPage() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    axiosClient.get(`/seller/orders/my/goods/${id}`)
-      .then((res) => setMyOrders(res.data.data || []))
-      .catch(() => {});
+    // 자신이 구매한 이력 조회 (BUYER, SELLER 모두 - 단 자기 자신의 상품 제외)
+    if (user?.role !== 'ADMIN') {
+      axiosClient.get(`/seller/orders/my/goods/${id}`)
+        .then((res) => setMyOrders(res.data.data || []))
+        .catch(() => {});
+    }
     // 수요조사 신청 여부 확인
     axiosClient.get(`/goods/${id}/preorder/check`)
       .then((res) => setPreorderRegistered(res.data.data?.registered ?? false))
@@ -171,8 +310,8 @@ export default function GoodsDetailPage() {
   const totalPrice = itemsTotal + Number(goods.deliveryFee || 0);
 
   const isPreorder = goods.goodsType === 'PREORDER';
-  const isBuyer = user?.role === 'BUYER';
-  const canPurchase = isAuthenticated && isBuyer;
+  const isOwnGoods = isAuthenticated && user?.username === goods.sellerUsername;
+  const canPurchase = isAuthenticated && !isOwnGoods && user?.role !== 'ADMIN';
 
   // 수요조사 마감 여부
   const preorderExpired = isPreorder && goods.preorderDeadline && new Date(goods.preorderDeadline) < new Date();
@@ -197,7 +336,7 @@ export default function GoodsDetailPage() {
   };
 
   const handlePreorderCancel = async () => {
-    if (!confirm('수요조사 신청을 취소하시겠습니까?')) return;
+    if (!await confirm('수요조사 신청을 취소하시겠습니까?')) return;
     try {
       await axiosClient.delete(`/goods/${id}/preorder`);
       show('신청이 취소되었습니다.', 'success');
@@ -227,6 +366,7 @@ export default function GoodsDetailPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      <ConfirmModal />
       <Toast toast={toast} onClose={hide} />
 
       <button
@@ -272,10 +412,21 @@ export default function GoodsDetailPage() {
           {(goods.category || goods.tags) && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {goods.category && (
-                <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-600 text-xs font-semibold rounded-full">{goods.category}</span>
+                <button
+                  onClick={() => navigate(`/?q=${encodeURIComponent(goods.category)}`)}
+                  className="px-2.5 py-0.5 bg-indigo-100 text-indigo-600 text-xs font-semibold rounded-full hover:bg-indigo-200 transition-colors"
+                >
+                  {goods.category}
+                </button>
               )}
               {goods.tags && goods.tags.split(',').map((tag) => tag.trim()).filter(Boolean).map((tag) => (
-                <span key={tag} className="px-2.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full">#{tag}</span>
+                <button
+                  key={tag}
+                  onClick={() => navigate(`/?q=${encodeURIComponent(tag)}`)}
+                  className="px-2.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full hover:bg-gray-200 transition-colors"
+                >
+                  #{tag}
+                </button>
               ))}
             </div>
           )}
@@ -488,13 +639,13 @@ export default function GoodsDetailPage() {
                     <span className="text-sm text-gray-400 font-medium">수요조사 마감</span>
                   ) : preorderRegistered ? (
                     <span className="text-sm text-green-600 font-semibold">신청 완료</span>
-                  ) : isAuthenticated ? (
+                  ) : isAuthenticated && !isOwnGoods ? (
                     <Button onClick={handlePreorderRegister} disabled={!hasAnyQty || preorderSubmitting}>
                       {preorderSubmitting ? '신청 중...' : '수요조사 신청'}
                     </Button>
-                  ) : (
+                  ) : !isAuthenticated ? (
                     <Button onClick={() => navigate('/login')}>로그인 후 신청</Button>
-                  )}
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -534,6 +685,9 @@ export default function GoodsDetailPage() {
 
       {/* 판매자 프로필 */}
       <SellerProfileCard username={goods.sellerUsername} />
+
+      {/* 리뷰 */}
+      <ReviewsSection goodsId={goods.id} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axiosClient from '../../api/axiosClient';
 import Spinner from '../../components/ui/Spinner';
 import Toast, { useToast } from '../../components/ui/Toast';
+import { useConfirm } from '../../components/ui/ConfirmModal';
 
 const COURIERS = ['CJ대한통운', '롯데택배', '한진택배', '우체국택배', '로젠택배', '경동택배', 'GS편의점택배', '기타'];
 
@@ -411,6 +412,7 @@ export default function SellerOrdersPage() {
   const [trackingOrder, setTrackingOrder] = useState(null);
   const [filterStatus, setFilterStatus] = useState('ALL');
   const { toast, show, hide } = useToast();
+  const { confirm, ConfirmModal } = useConfirm();
 
   const fetchOrders = () => {
     setLoading(true);
@@ -439,7 +441,7 @@ export default function SellerOrdersPage() {
   };
 
   const handleCancel = async (orderId) => {
-    if (!confirm('취소 요청을 접수하시겠습니까? 관리자 승인 후 취소됩니다.')) return;
+    if (!await confirm('취소 요청을 접수하시겠습니까?', '관리자 승인 후 취소됩니다.')) return;
     try {
       const res = await axiosClient.put(`/seller/orders/${orderId}/cancel`);
       show('취소 요청이 접수되었습니다.', 'success');
@@ -462,6 +464,7 @@ export default function SellerOrdersPage() {
 
   return (
     <div>
+      <ConfirmModal />
       <Toast toast={toast} onClose={hide} />
       {trackingOrder && (
         <TrackingModal

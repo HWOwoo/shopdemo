@@ -60,6 +60,9 @@
 - 굿즈 심사 (승인/반려 + 반려 사유)
 - 판매자 신청 심사
 - 주문 취소 요청 관리
+- 전체 주문 조회 (상태 탭 필터 + 검색, 상세 드로어)
+- 회원 관리 (역할 변경 BUYER↔SELLER, 계정 활성/정지)
+- 공지사항 관리 (작성/수정/삭제, 상단 고정)
 
 ---
 
@@ -91,33 +94,53 @@
   - 굿즈 등록 폼에 마감일 입력 필드 (PREORDER 선택 시)
   - 굿즈 상세 페이지: 수요조사 신청/취소 UI, 마감일·신청 인원 표시
   - 판매자 대시보드: 신청 인원 표시, 생산 확정 버튼
+  - 판매자 수요조사 집계 페이지 (`/seller/preorders/:goodsId` — `SellerPreordersPage`):
+    옵션별 수요 집계, 신청자 목록, CLOSED 상태에서 생산 확정/취소 버튼
   - 구매자: 내 수요조사 신청 목록 (`/my/preorders`)
 
 ---
 
-### 3-2. ✅ 정산 (Settlement) — **구현 완료**
+### 3-2. ✅ 정산 (Settlement) — **구현 완료** (판매자 신청 흐름 2026-04-30 추가)
 
 > 판매자가 판매 금액을 정산받는 흐름.
 
-#### 흐름
+#### 흐름 (판매자 풀 방식 + 어드민 직접 생성 백업)
 ```
-DELIVERED 상태 주문 누적
-  └─ 정산 주기 도달 (수동 or 자동)
-  └─ 어드민: 정산 내역 생성 (PENDING)
-  └─ 어드민: 정산 완료 처리 (PAID)
-  └─ 판매자: 정산 내역 조회
+DELIVERED 상태 주문 누적 (각 주문에 settlement FK = null)
+  └─ 판매자: "신청 가능 금액" 확인 → "정산 신청" 클릭
+        └─ Settlement(REQUESTED) 생성, 누적 주문 모두 settlement_id 잠금
+        └─ 어드민 전원에게 SETTLEMENT_REQUESTED 알림
+  └─ 어드민: 신청 검토
+        ├─ 승인 → REQUESTED → PENDING (송금 대기), SETTLEMENT_APPROVED 알림
+        │     └─ 실제 송금 후 "정산 완료" 클릭 → PENDING → PAID, SETTLEMENT_PAID 알림
+        └─ 거절 → REQUESTED → REJECTED (사유 첨부), 묶였던 주문 settlement=null 복귀
+              └─ 판매자에게 SETTLEMENT_REJECTED 알림 + 사유 전달
+              └─ 판매자는 사유 확인 후 다시 신청 가능
+
+[백업] 어드민이 직접 정산 생성하는 기존 흐름도 유지 (PENDING부터 시작)
 ```
 
 #### 구현된 항목
 - **백엔드**
-  - `Settlement` 엔티티 (seller, amount, orderCount, periodStart/End, status: PENDING/PAID, paidAt)
-  - `SettlementService`: 배송완료 주문 기간별 집계, 정산 생성, 완료 처리
-  - `SettlementRepository`, `SettlementResponse`, `CreateSettlementRequest` DTO
-  - `AdminController`: 정산 목록 조회, 생성, 완료 처리 엔드포인트
-  - `SellerController`: 내 정산 목록 조회 엔드포인트
+  - `Settlement` 엔티티 (seller, amount, orderCount, periodStart/End, status, requestedAt, paidAt, rejectedAt, rejectedReason)
+  - `SettlementStatus`: `REQUESTED` / `PENDING` / `PAID` / `REJECTED`
+  - `Order.settlement` FK 추가 — 주문이 한 정산에만 묶이도록 잠금 (이중 정산 방지)
+  - `SettlementService`: `requestSettlement(seller)` / `approveRequest(id)` / `rejectRequest(id, reason)` / `markAsPaid(id)` / `getAvailable(seller)` / 어드민 직접 `createSettlement`
+  - `OrderRepository.findUnsettledDeliveredOrdersBySeller`, `findBySettlementId` — 신청·거절 시 주문 잠금/해제
+  - `NotificationType` 4종 추가: `SETTLEMENT_REQUESTED` / `_APPROVED` / `_REJECTED` / `_PAID`
+  - `AdminController`: `/admin/settlements/{id}/approve`, `/admin/settlements/{id}/reject`
+  - `SellerController`: `/seller/settlements/available`, `/seller/settlements/request`
 - **프론트**
-  - 판매자: 정산 내역 페이지 (`/seller/settlements`) — 완료/대기 합계, 테이블/카드
-  - 어드민: 정산 관리 페이지 (`/admin/settlements`) — 생성 폼, 완료 처리 버튼
+  - 판매자 (`/seller/settlements`):
+    - 신청 가능 금액 카드 (미정산 누적분 + 가장 오래된/최근 주문일 표시)
+    - "정산 신청" 버튼 — 검토 중인 신청이 있으면 비활성
+    - 거절 사유 표시
+  - 어드민 (`/admin/settlements`):
+    - 상태 탭(신청 검토 / 송금 대기 / 정산 완료 / 거절 / 전체) + 카운트
+    - REQUESTED 행: 승인/거절 버튼, 거절 시 사유 입력 모달
+    - PENDING 행: 정산 완료 버튼
+    - 직접 생성 폼은 백업 흐름으로 유지 (안내 문구 추가)
+  - `NotificationsPage`: 4종 SETTLEMENT 알림 아이콘/스타일 매핑
 
 ---
 
@@ -155,10 +178,12 @@ DELIVERED 상태 주문 누적
   - 굿즈 등록 폼에 카테고리 드롭다운, 태그 텍스트 입력
   - ShopPage 서버 사이드 검색 연동 (클라이언트 필터링 → 서버 검색 전환)
   - 굿즈 상세 페이지에 카테고리·태그 배지 표시
-
-#### 추가 개선 가능
-- ShopPage 카테고리 필터 UI (사이드바 또는 탭)
-- 태그 클릭 시 해당 태그 검색
+  - **[2026-04-15 추가]** ShopPage 카테고리 필터 칩 UI 추가
+    - 메인 탭(통판/사전수요조사) 하단에 가로 스크롤 칩 행 추가
+    - URL `?category=` 파라미터 연동 — 탭 전환 / 검색어와 독립 동작
+    - 클라이언트 사이드 필터링 (`goods.filter(item => item.category === selectedCategory)`)
+    - 사전수요조사 탭에도 동일 카테고리 필터 적용
+  - **[2026-04-15 추가]** 굿즈 상세 페이지 태그 클릭 → `/?q={tag}` 검색 이동
 
 ---
 
@@ -190,38 +215,109 @@ DELIVERED 상태 주문 누적
 
 ---
 
-### 3-6. 어드민 고도화 — **우선순위: 낮음**
+### 3-6. ✅ 어드민 고도화 — **구현 완료 (2026-04-17)**
 
-현재 AdminDashboard에 회원 목록이 테이블로만 표시됨.
-
-| 기능 | 현황 | 필요 작업 |
-|------|------|-----------|
-| 전체 주문 조회 | 없음 | `AdminOrdersPage` 구현 |
-| 전체 회원 관리 | 목록만 있음 | 역할 변경, 계정 정지 기능 |
-| 굿즈 전체 목록 | 없음 | 상태 필터, 강제 마감 기능 |
-| 공지사항 관리 | 없음 | 공지사항 CRUD |
+| 기능 | 현황 |
+|------|------|
+| 전체 주문 조회 | ✅ `AdminOrdersPage` — 상태 탭 필터, 검색, 상세 드로어 |
+| 전체 회원 관리 | ✅ `AdminUsersPage` — 역할 변경(BUYER↔SELLER), 활성/정지 토글 |
+| 공지사항 관리 | ✅ `AdminNoticesPage` + `AdminNoticeEditPage` — CRUD, 상단 고정 |
+| 굿즈 전체 목록 | ✅ `AdminGoodsPage` (`/admin/goods`) — 상태 탭(ALL/PENDING/APPROVED/CLOSED/SOLDOUT/REJECTED) + 키워드 검색 |
 
 ---
 
-### 3-7. 공지사항 / 판매 규정 게시판 — **우선순위: 낮음**
+### 3-7. ✅ 공지사항 — **구현 완료 (2026-04-17)**
 
-> 서비스 공지, 판매자 준수 규정, FAQ 등
+> 서비스 공지, 판매자 준수 규정 등을 어드민이 작성하여 전체 공개.
 
-- 어드민이 작성, 전체 공개
-- ShopPage 상단 공지 배너
-- 별도 공지사항 페이지 (`/notices`)
+#### 구현된 항목
+- **백엔드**
+  - `Notice` 엔티티 (`title`, `content`, `author`, `pinned`, `viewCount`, `createdAt`, `updatedAt`)
+  - `NoticeRepository`: 전체 목록(고정 우선), 고정만, 상단 N개 조회
+  - `NoticeService`: 목록/상세(조회수 증가)/작성/수정/삭제
+  - `NoticeController` (공개): `GET /api/notices`, `GET /api/notices/banner?limit=`, `GET /api/notices/{id}`
+  - `AdminController`: `POST/PUT/DELETE /api/admin/notices` (작성자는 요청 사용자의 username으로 저장)
+  - `SecurityConfig`: `/api/notices*` GET permitAll
+- **프론트**
+  - `NoticesPage` (`/notices`): 목록, 고정 배지, 조회수·작성일
+  - `NoticeDetailPage` (`/notices/:id`): DOMPurify sanitize된 HTML 렌더링
+  - `AdminNoticesPage` (`/admin/notices`): 목록 + 수정/삭제
+  - `AdminNoticeEditPage` (`/admin/notices/new`, `/admin/notices/:id/edit`): RichEditor 기반 작성/수정
+  - `ShopPage`: 최상단 공지 배너(가로 스크롤, 고정 우선 N개)
+  - `Navbar`: 사용자 메뉴에 공지사항 링크 추가
 
 ---
 
-### 3-8. 기타 (장기 과제)
+### 3-8. ✅ 1:1 채팅 — **구현 완료**
+
+> 구매자 ↔ 판매자 간 1:1 메시지 기능.
+
+#### 흐름
+```
+굿즈 상세 페이지 → 판매자 프로필 하단 메시지 버튼 클릭
+  └─ getOrCreateRoom() 호출 → 채팅방 생성 or 기존 방 재사용
+  └─ /chat/:roomId 로 이동 → 메시지 입력 및 수신
+```
+
+#### 구현된 항목
+- **백엔드**
+  - `ChatRoom` 엔티티 (`user1`, `user2`, unique constraint, `getOtherUser()` 편의 메서드)
+  - `ChatMessage` 엔티티 (`room`, `sender`, `content`, `readByReceiver`)
+  - `ChatRoomRepository`: 방 조회, 내 방 목록
+  - `ChatMessageRepository`: 메시지 목록, 안읽은 수, 읽음 처리
+  - `ChatService`: 방 생성/조회, 메시지 전송, 읽음 처리, 안읽은 수 집계
+  - `ChatController`: 5개 엔드포인트 (`POST /rooms/{username}`, `GET /rooms`, `GET /rooms/{roomId}/messages`, `POST /rooms/{roomId}/messages`, `GET /unread-count`)
+  - `SecurityConfig`: `/api/chat/**` authenticated 처리
+- **프론트**
+  - `api/chat.js`: API 호출 함수
+  - `ChatListPage` (`/chat`): 대화 목록, 마지막 메시지·시간·안읽은 뱃지, 5초 폴링
+    - **[2026-04-15]** `visibilitychange` 이벤트로 탭 비활성 시 폴링 자동 중단/재개
+  - `ChatRoomPage` (`/chat/:roomId`): 카카오톡 스타일 버블, 날짜 구분선, 3초 폴링, Enter 전송
+    - **[2026-04-15]** `getMyRooms()` 병행 조회로 대화 0건 상태에서도 상대방 이름 표시
+    - **[2026-04-15]** `visibilitychange` 폴링 최적화 동일 적용
+    - **[2026-04-15]** 헤더 상대방 이름 → `/seller/:username` 프로필 링크 연결
+  - `SellerProfilePage`: 메시지 버튼 → `getOrCreateRoom()` 후 채팅방으로 이동 (자기 자신 글에서는 숨김)
+  - `GoodsDetailPage`: 메시지 버튼 동일 연결
+  - `Navbar`: 채팅 아이콘 + 안읽은 수 뱃지 추가 (30초 폴링)
+  - `App.jsx`: `/chat`, `/chat/:roomId` 라우트 등록
+
+---
+
+### 3-10. ✅ 커스텀 확인 모달 (ConfirmModal) — **구현 완료 (2026-04-15)**
+
+> `window.confirm()` 대신 앱 통일성 있는 커스텀 모달.
+
+#### 구현된 항목
+- `frontend/src/components/ui/ConfirmModal.jsx`
+  - `useConfirm()` 훅: `{ confirm, ConfirmModal }` 반환
+  - `confirm(message, subMessage?)` — Promise 기반 async/await 사용 가능
+  - 디자인: 흰색 카드, 주황 경고 아이콘, 취소(회색) / 확인(인디고) 버튼
+- 적용 파일 (16곳): `MyOrdersPage`, `MyReviewsPage`, `MyPreordersPage`, `MyWishlistPage`, `GoodsDetailPage`, `SellerDashboard`, `SellerOrdersPage`, `SellerPreordersPage`, `AdminCancelRequestsPage`, `AdminSettlementsPage`
+
+---
+
+### 3-11. ✅ 사전수요조사 생산 취소 — **구현 완료 (2026-04-15)**
+
+> 판매자가 생산 확정 대신 취소를 선택했을 때 신청자에게 알림 발송.
+
+#### 구현된 항목
+- **백엔드**
+  - `PreorderService.cancelPreorder(sellerUsername, goodsId)`: 판매자 소유권 확인, PREORDER·CLOSED 상태 검증, 신청자 전원에게 `PREORDER_CLOSED` 알림 발송
+  - `GoodsController`: `POST /api/goods/my/{id}/preorder-cancel` 엔드포인트
+- **프론트**
+  - `SellerPreordersPage`: CLOSED 상태에서 생산 확정 + 취소 버튼 나란히 표시, `useConfirm` 연결
+
+---
+
+### 3-9. 기타 (장기 과제)
 
 | 기능 | 설명 |
 |------|------|
 | 소셜 로그인 | 카카오 / 네이버 / Google OAuth (현재 버튼만 존재) |
 | 실 이메일 인증 | 현재 mock 처리 |
 | 결제 모듈 연동 | 토스페이먼츠 또는 포트원 (현재 무통장 입금만) |
-| 실시간 알림 | 현재 30초 폴링 → WebSocket / SSE 전환 |
-| 이미지 다중 업로드 | 현재 대표 이미지 1장만 가능 |
+| 실시간 알림/채팅 | 현재 폴링 → WebSocket / SSE 전환 |
+| 이미지 다중 업로드 | ✅ GoodsForm에 추가 이미지 최대 5장 업로드 구현됨 |
 
 ---
 
@@ -235,15 +331,19 @@ DELIVERED 상태 주문 누적
 | `/login` | 로그인 | ✅ 구현됨 |
 | `/register` | 회원가입 | ✅ 구현됨 |
 | `/seller/:username` | 창작자 프로필 | ✅ 구현됨 |
-| `/notices` | 공지사항 | ❌ 미구현 |
+| `/notices` | 공지사항 목록 | ✅ 구현됨 |
+| `/notices/:id` | 공지사항 상세 | ✅ 구현됨 |
 
 ### 구매자
 | 경로 | 페이지 | 상태 |
 |------|--------|------|
+| `/my` | 마이페이지 허브 | ✅ 구현됨 |
 | `/my/orders` | 구매 내역 | ✅ 구현됨 |
 | `/my/reviews` | 내 리뷰 + 리뷰 작성 | ✅ 구현됨 |
 | `/my/wishlist` | 찜 목록 | ✅ 구현됨 |
 | `/my/preorders` | 내 수요조사 신청 목록 | ✅ 구현됨 |
+| `/chat` | 채팅 목록 | ✅ 구현됨 |
+| `/chat/:roomId` | 1:1 채팅방 | ✅ 구현됨 |
 | `/notifications` | 알림 | ✅ 구현됨 |
 | `/profile/edit` | 프로필 편집 | ✅ 구현됨 |
 
@@ -257,7 +357,7 @@ DELIVERED 상태 주문 누적
 | `/seller/goods/:id/edit` | 굿즈 수정 | ✅ 구현됨 |
 | `/seller/orders` | 주문 관리 | ✅ 구현됨 |
 | `/seller/settlements` | 정산 내역 | ✅ 구현됨 |
-| `/seller/preorders/:goodsId` | 수요조사 집계 | ❌ 미구현 |
+| `/seller/preorders/:goodsId` | 수요조사 집계 | ✅ 구현됨 |
 
 ### 어드민
 | 경로 | 페이지 | 상태 |
@@ -268,9 +368,12 @@ DELIVERED 상태 주문 누적
 | `/admin/seller-applications` | 판매자 신청 목록 | ✅ 구현됨 |
 | `/admin/seller-applications/:id/review` | 판매자 신청 심사 | ✅ 구현됨 |
 | `/admin/orders/cancel-requests` | 취소 요청 관리 | ✅ 구현됨 |
-| `/admin/orders` | 전체 주문 조회 | ❌ 미구현 |
-| `/admin/users` | 전체 회원 관리 | ❌ 미구현 |
+| `/admin/orders` | 전체 주문 조회 | ✅ 구현됨 |
+| `/admin/users` | 전체 회원 관리 | ✅ 구현됨 |
 | `/admin/settlements` | 정산 관리 | ✅ 구현됨 |
+| `/admin/notices` | 공지사항 관리 | ✅ 구현됨 |
+| `/admin/notices/new`, `/admin/notices/:id/edit` | 공지 작성/수정 | ✅ 구현됨 |
+| `/admin/goods` | 굿즈 전체 조회 | ✅ 구현됨 |
 
 ---
 
@@ -295,7 +398,8 @@ User ──< Notification
 Goods ──< PreorderEntry ──< PreorderEntryItem ──> GoodsOption  # ✅ 구현됨
 User ──< Wishlist ──> Goods           # 찜 ✅ 구현됨
 User ──< Settlement                   # 정산 ✅ 구현됨
-Notice                                # 공지사항
+User ──< ChatRoom ──< ChatMessage     # 1:1 채팅 ✅ 구현됨
+User ──< Notice (as author)           # 공지사항 ✅ 구현됨
 ```
 
 ---
@@ -455,3 +559,122 @@ PENDING_PAYMENT
   - `NotificationsPage`: `GOODS_ON_SALE` 알림 아이콘(🛍)·스타일 매핑 추가
   - `App.jsx`: `/my/wishlist` 라우트 등록 (ProtectedRoute)
   - `Navbar`: 찜 목록 메뉴 링크 추가
+
+#### UI/UX 개선
+- `GoodsDetailPage` 판매자 프로필 카드에 메시지·판매자 페이지 버튼 추가
+- `Navbar` 드롭다운 슬림화 (BUYER: 마이페이지·판매자신청, SELLER: 마이페이지·판매관리, ADMIN: 관리자패널)
+- `MyPage` (`/my`) 허브 페이지 신규 생성 — 구매 내역·찜·수요조사·리뷰 카드 그리드
+
+---
+
+### 2026-04-15 (2)
+
+#### 신규 기능 구현
+
+**1:1 채팅 (Chat) — 구현 완료**
+- **백엔드**
+  - `ChatRoom` 엔티티 (`user1`, `user2`, unique(user1_id, user2_id), `getOtherUser()` 편의 메서드)
+  - `ChatMessage` 엔티티 (`room`, `sender`, `content`, `readByReceiver`)
+  - `ChatRoomRepository`: 방 조회, 내 방 목록 (`findByUser1OrUser2`)
+  - `ChatMessageRepository`: 메시지 목록, 안읽은 수, 읽음 처리, 마지막 메시지 조회
+  - `ChatService`: 방 생성/조회 (id 오름차순 정렬로 unique 보장), 메시지 전송, 읽음 처리, 안읽은 수 집계
+  - `ChatController`: `POST /api/chat/rooms/{username}`, `GET /api/chat/rooms`, `GET /api/chat/rooms/{roomId}/messages`, `POST /api/chat/rooms/{roomId}/messages`, `GET /api/chat/unread-count`
+  - `SecurityConfig`: `/api/chat/**` authenticated 처리
+- **프론트엔드**
+  - `api/chat.js`: API 호출 함수 5개
+  - `ChatListPage` (`/chat`): 대화 목록, 아바타·마지막 메시지·시간·안읽은 뱃지, 5초 폴링
+  - `ChatRoomPage` (`/chat/:roomId`): 카카오톡 스타일 버블(내 메시지 우측 indigo, 상대 좌측 회색), 날짜 구분선, Enter 전송(Shift+Enter 줄바꿈), 3초 폴링
+  - `GoodsDetailPage`: 메시지 버튼 → `getOrCreateRoom()` 후 채팅방 이동, 자기 자신 글에서는 버튼 숨김
+  - `Navbar`: 채팅 아이콘 + 안읽은 수 뱃지 (30초 폴링)
+  - `App.jsx`: `/chat`, `/chat/:roomId` 라우트 등록
+
+---
+
+### 2026-04-17
+
+#### 신규 기능 구현
+
+**공지사항 (Notice) — 구현 완료**
+- **백엔드**
+  - `Notice` 엔티티 (`title`, `content TEXT`, `author`, `pinned`, `viewCount`, `createdAt`, `updatedAt`)
+  - `NoticeRepository`: `findAllByOrderByPinnedDescCreatedAtDesc`, `findByPinnedTrueOrderByCreatedAtDesc`, `findTopByOrderByPinnedDescCreatedAtDesc(Pageable)` — 배너용
+  - `NoticeRequest`, `NoticeResponse`, `NoticeSummaryResponse` DTO
+  - `NoticeService`: 목록(요약)/상세(조회수 +1)/생성/수정/삭제
+  - `NoticeController` (공개 GET): `GET /api/notices`, `GET /api/notices/banner?limit=3`, `GET /api/notices/{id}`
+  - `AdminController`: `POST /api/admin/notices`, `PUT /api/admin/notices/{id}`, `DELETE /api/admin/notices/{id}`
+  - `SecurityConfig`: `/api/notices`, `/api/notices/banner`, `/api/notices/*` GET permitAll
+- **프론트엔드**
+  - `api/notice.js`: 목록/배너/상세/작성/수정/삭제 호출
+  - `NoticesPage` (`/notices`): 고정 배지, 조회수, 작성일 표시
+  - `NoticeDetailPage` (`/notices/:id`): `DOMPurify.sanitize`된 본문 렌더
+  - `AdminNoticesPage` (`/admin/notices`): 목록 + 수정/삭제 (`useConfirm`)
+  - `AdminNoticeEditPage` (`/admin/notices/new`, `/admin/notices/:id/edit`): `RichEditor` 기반 작성/수정, 상단 고정 토글
+  - `ShopPage`: 최상단 공지 배너(고정 우선 N개, 가로 스크롤) 추가 — 클릭 시 상세로 이동
+  - `Navbar`: 사용자 메뉴 드롭다운에 공지사항 진입점 추가
+
+**어드민 전체 주문 조회 — 구현 완료**
+- **백엔드**
+  - `OrderRepository`: `findAllWithGoodsAndUsers()`, `findAllByStatusWithGoodsAndUsers(status)` JOIN FETCH 쿼리 추가 (N+1 방지)
+  - `OrderService.getAllOrders(String statusFilter)`: `"ALL"`/`null` 또는 `OrderStatus` 값으로 필터
+  - `AdminController`: `GET /api/admin/orders?status=...`
+- **프론트엔드**
+  - `AdminOrdersPage` (`/admin/orders`): 상태 탭(ALL/PENDING_PAYMENT/PAYMENT_CONFIRMED/SHIPPED/DELIVERED/CANCEL_REQUESTED/CANCELLED), 주문번호·상품·구매자·판매자 검색, 데스크탑 테이블, 우측 슬라이드 상세 드로어(주문/참여자/배송지/송장)
+
+**어드민 전체 회원 관리 — 구현 완료**
+- **백엔드**
+  - `User` 엔티티에 `active: Boolean` 필드 추가 (null은 활성 처리)
+  - `UserPrincipal`: `isEnabled()`, `isAccountNonLocked()` 가 `active` 반영 → 정지 계정 로그인 차단
+  - `AdminUserResponse`, `AdminUpdateUserRequest` DTO 신규
+  - `UserService.getAllUsersForAdmin()`, `adminUpdateUser(adminUserId, targetUserId, request)`
+    - 자기 자신 변경 금지, 기존 ADMIN의 role 변경 금지, ADMIN 권한 부여 금지, ADMIN 비활성화 금지
+  - `AdminController`: `GET /api/admin/users` 응답 타입 `List<AdminUserResponse>`로 변경, `PUT /api/admin/users/{id}` 추가
+- **프론트엔드**
+  - `AdminUsersPage` (`/admin/users`): 역할별 카운트 카드, 역할 탭, 검색, 드롭다운 역할 변경(BUYER↔SELLER), 계정 정지/활성화 버튼 (모두 `useConfirm`)
+  - `AdminDashboard`: 전체 주문 조회 / 회원 관리 / 공지사항 관리 / 정산 관리 바로가기 추가
+
+**JWT 만료(401) 인터셉터 강화**
+- `axiosClient.js`: 401 응답 시 로그인 페이지·auth 엔드포인트는 제외하고 토큰 제거 + `/login?expired=1&redirect={encoded}` 이동 (리다이렉트 루프 방지)
+- `LoginPage.jsx`: `expired=1` 쿼리 시 "로그인 세션이 만료되었습니다" 배너 표시, 로그인 성공 후 `redirect` 경로 복귀
+
+---
+
+### 2026-04-28
+
+#### 신규 기능 구현
+
+**리뷰 통계 (별점 평균/분포) — 구현 완료**
+- **백엔드**
+  - `ReviewRepository`: `findAverageRatingByGoodsId`, `countByGoodsId`, `findRatingDistributionByGoodsId(GROUP BY rating)` 추가
+  - `GoodsResponse`: `averageRating`, `reviewCount` 필드 추가 → `GoodsService.toResponse`에서 채움
+  - `ReviewStatsResponse` DTO + `ReviewService.getStatsByGoods` (1~5점 분포 항상 포함)
+  - `ReviewController.getGoodsReviewStats`: `GET /api/reviews/goods/{goodsId}/stats` (공개, 기존 permitAll 패턴 적용)
+- **프론트엔드**
+  - `ShopPage` `GoodsCard` / `PreorderCard`: 가격 옆에 ★ 평균(개수) 노출 (리뷰 0건이면 숨김)
+  - `GoodsDetailPage`: 판매자 프로필 하단에 `ReviewsSection` 신설
+    - 평균/분포 헤더(가로 막대 그래프)
+    - 리뷰 리스트(작성자 아바타·별점·작성일·본문)
+  - `StarsReadOnly` 공용 작은 별 컴포넌트 인라인 정의
+- **참고:** 기존 REQUIREMENTS의 "상품 상세 페이지에서 리뷰 목록 표시 ✅" 표기는 사실은 미구현이었던 stale 항목 — 이번 작업으로 실제 구현됨
+
+**굿즈 정렬 옵션 — 구현 완료**
+- **백엔드**
+  - `GoodsController.getApprovedGoods()`에 `sort` 파라미터 추가 (`latest`/`priceAsc`/`priceDesc`/`deadlineAsc`)
+  - 잘못된 값은 기본 `latest`(createdAt DESC)로 폴백
+- **프론트엔드**
+  - `ShopPage`: 카테고리 칩 행 우측에 정렬 셀렉트 박스 추가
+  - 통판 탭: 최신순/낮은가격/높은가격 (3개)
+  - 사전수요조사 탭: + 마감 임박순 (4개)
+  - URL `?sort=` 연동 (`latest`는 파라미터 생략), 탭 전환 시 자동 리셋
+
+**어드민 굿즈 전체 조회 — 구현 완료**
+- **백엔드**
+  - `GoodsRepository.searchForAdmin(status, keyword)` — JOIN FETCH로 N+1 방지, status null 허용(전체), 키워드(이름/판매자/카테고리/태그) 부분일치
+  - `AdminService.getAllGoodsForAdmin(statusFilter, keyword)` — `"ALL"`/`null`/공백은 전체, 잘못된 status는 `BadRequestException`
+  - `AdminController`: `GET /api/admin/goods?status=...&q=...`
+- **프론트엔드**
+  - `AdminGoodsPage` (`/admin/goods`): 상태 탭(ALL/PENDING/APPROVED/CLOSED/SOLDOUT/REJECTED), 키워드 검색(Enter 제출), 테이블(굿즈명/유형/판매자/카테고리/가격/상태/등록일), 행 클릭 시 `/admin/goods/:id/review` 이동
+  - `App.jsx`: `/admin/goods` 라우트 등록
+  - `AdminDashboard`: "굿즈 전체 조회" 단축 버튼 추가
+- **문서 정정**
+  - 4장 판매자 화면: `/seller/preorders/:goodsId` ❌ → ✅ (`SellerPreordersPage` 실제 구현됨)
+  - 3-1 사전수요조사 섹션에 `SellerPreordersPage` 항목(옵션 집계, 신청자 목록, 생산 확정/취소) 추가

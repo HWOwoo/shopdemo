@@ -21,6 +21,7 @@ import shop.inst.shopdemo.exception.UnauthorizedException;
 import shop.inst.shopdemo.repository.GoodsOptionRepository;
 import shop.inst.shopdemo.repository.GoodsRepository;
 import shop.inst.shopdemo.repository.PreorderEntryRepository;
+import shop.inst.shopdemo.repository.ReviewRepository;
 import shop.inst.shopdemo.repository.UserRepository;
 
 import java.math.BigDecimal;
@@ -35,6 +36,7 @@ public class GoodsService {
     private final GoodsOptionRepository goodsOptionRepository;
     private final UserRepository userRepository;
     private final PreorderEntryRepository preorderEntryRepository;
+    private final ReviewRepository reviewRepository;
     private final EmailService emailService;
 
     /** 공개 상품 목록: 상품 APPROVED + 판매자 신청 APPROVED + 판매 유형 필터 + 검색 */
@@ -413,6 +415,8 @@ public class GoodsService {
                 .category(goods.getCategory())
                 .tags(goods.getTags())
                 .additionalImages(fromAdditionalImagesString(goods.getAdditionalImages()))
+                .averageRating(reviewRepository.findAverageRatingByGoodsId(goods.getId()))
+                .reviewCount(reviewRepository.countByGoodsId(goods.getId()))
                 .createdAt(goods.getCreatedAt())
                 .updatedAt(goods.getUpdatedAt())
                 .build();

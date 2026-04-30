@@ -79,6 +79,11 @@ public class Order {
     private String courierName;
     private String trackingNumber;
 
+    // 정산 연결 (정산이 만들어진 주문은 같은 주문이 다시 정산되지 않도록 잠금)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "settlement_id")
+    private Settlement settlement;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

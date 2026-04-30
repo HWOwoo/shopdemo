@@ -207,6 +207,35 @@ public class PreorderService {
         wishlistService.notifyGoodsOnSale(goods);
     }
 
+    /** 판매자: 생산 취소 → CLOSED 상태로 변경, 신청자 알림 */
+    @Transactional
+    public void cancelPreorder(String sellerUsername, Long goodsId) {
+        Goods goods = goodsRepository.findById(goodsId)
+                .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다."));
+        if (!goods.getSeller().getUsername().equals(sellerUsername)) {
+            throw new BadRequestException("권한이 없습니다.");
+        }
+        if (goods.getGoodsType() != GoodsType.PREORDER) {
+            throw new BadRequestException("수요조사 상품이 아닙니다.");
+        }
+        if (goods.getStatus() != GoodsStatus.CLOSED) {
+            throw new BadRequestException("마감된 수요조사만 취소할 수 있습니다.");
+        }
+
+        // 신청자들에게 알림
+        List<PreorderEntry> entries = preorderEntryRepository.findByGoodsOrderByCreatedAtDesc(goods);
+        for (PreorderEntry entry : entries) {
+            notificationService.create(
+                    entry.getUser(),
+                    NotificationType.PREORDER_CLOSED,
+                    "수요조사 생산이 취소되었습니다",
+                    "'" + goods.getName() + "' 수요조사가 취소되었습니다.",
+                    null,
+                    goods.getId()
+            );
+        }
+    }
+
     /** 마감일 지난 수요조사 자동 마감 (스케줄러에서 호출) */
     @Transactional
     public void closeExpiredPreorders() {

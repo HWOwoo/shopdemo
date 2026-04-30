@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../store/authStore';
 import Input from '../components/ui/Input';
@@ -38,6 +38,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { dispatch } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const expired = searchParams.get('expired') === '1';
+  const redirectTo = searchParams.get('redirect');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,7 +50,9 @@ export default function LoginPage() {
       const res = await axiosClient.post('/auth/login', form);
       dispatch({ type: 'LOGIN', payload: res.data.data });
       const role = res.data.data.role;
-      if (role === 'SELLER') navigate('/seller/dashboard');
+      if (redirectTo) {
+        navigate(redirectTo);
+      } else if (role === 'SELLER') navigate('/seller/dashboard');
       else if (role === 'ADMIN') navigate('/admin/seller-applications');
       else navigate('/');
     } catch (err) {
@@ -94,6 +99,13 @@ export default function LoginPage() {
           <span className="text-xs text-gray-400 font-medium">또는 아이디로 로그인</span>
           <div className="flex-1 h-px bg-gray-200" />
         </div>
+
+        {expired && !error && (
+          <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700 flex items-center gap-2">
+            <span className="flex-shrink-0">🔒</span>
+            로그인 세션이 만료되었습니다. 다시 로그인해주세요.
+          </div>
+        )}
 
         {error && (
           <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">

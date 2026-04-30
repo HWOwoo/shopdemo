@@ -24,12 +24,22 @@ import NotificationsPage from './pages/NotificationsPage';
 import MyReviewsPage from './pages/MyReviewsPage';
 import MyPreordersPage from './pages/MyPreordersPage';
 import MyWishlistPage from './pages/MyWishlistPage';
+import MyPage from './pages/MyPage';
 import SellerProfilePage from './pages/SellerProfilePage';
 import SellerSettlementsPage from './pages/seller/SellerSettlementsPage';
 import SellerPreordersPage from './pages/seller/SellerPreordersPage';
 import AdminSettlementsPage from './pages/admin/AdminSettlementsPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
+import ChatListPage from './pages/ChatListPage';
+import ChatRoomPage from './pages/ChatRoomPage';
+import NoticesPage from './pages/NoticesPage';
+import NoticeDetailPage from './pages/NoticeDetailPage';
+import AdminNoticesPage from './pages/admin/AdminNoticesPage';
+import AdminNoticeEditPage from './pages/admin/AdminNoticeEditPage';
+import AdminOrdersPage from './pages/admin/AdminOrdersPage';
+import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminGoodsPage from './pages/admin/AdminGoodsPage';
 
 const router = createBrowserRouter([
   {
@@ -41,6 +51,8 @@ const router = createBrowserRouter([
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
       { path: 'seller/:username', element: <SellerProfilePage /> },
+      { path: 'notices', element: <NoticesPage /> },
+      { path: 'notices/:id', element: <NoticeDetailPage /> },
       {
         path: 'seller/apply',
         element: <ProtectedRoute><SellerApplyPage /></ProtectedRoute>,
@@ -78,6 +90,10 @@ const router = createBrowserRouter([
         element: <RoleRoute role="ADMIN"><AdminDashboard /></RoleRoute>,
       },
       {
+        path: 'admin/goods',
+        element: <RoleRoute role="ADMIN"><AdminGoodsPage /></RoleRoute>,
+      },
+      {
         path: 'admin/goods/pending',
         element: <RoleRoute role="ADMIN"><AdminPendingPage /></RoleRoute>,
       },
@@ -102,6 +118,30 @@ const router = createBrowserRouter([
         element: <RoleRoute role="ADMIN"><AdminSettlementsPage /></RoleRoute>,
       },
       {
+        path: 'admin/orders',
+        element: <RoleRoute role="ADMIN"><AdminOrdersPage /></RoleRoute>,
+      },
+      {
+        path: 'admin/users',
+        element: <RoleRoute role="ADMIN"><AdminUsersPage /></RoleRoute>,
+      },
+      {
+        path: 'admin/notices',
+        element: <RoleRoute role="ADMIN"><AdminNoticesPage /></RoleRoute>,
+      },
+      {
+        path: 'admin/notices/new',
+        element: <RoleRoute role="ADMIN"><AdminNoticeEditPage /></RoleRoute>,
+      },
+      {
+        path: 'admin/notices/:id/edit',
+        element: <RoleRoute role="ADMIN"><AdminNoticeEditPage /></RoleRoute>,
+      },
+      {
+        path: 'my',
+        element: <ProtectedRoute><MyPage /></ProtectedRoute>,
+      },
+      {
         path: 'my/orders',
         element: <ProtectedRoute><MyOrdersPage /></ProtectedRoute>,
       },
@@ -116,6 +156,14 @@ const router = createBrowserRouter([
       {
         path: 'my/wishlist',
         element: <ProtectedRoute><MyWishlistPage /></ProtectedRoute>,
+      },
+      {
+        path: 'chat',
+        element: <ProtectedRoute><ChatListPage /></ProtectedRoute>,
+      },
+      {
+        path: 'chat/:roomId',
+        element: <ProtectedRoute><ChatRoomPage /></ProtectedRoute>,
       },
       {
         path: 'notifications',

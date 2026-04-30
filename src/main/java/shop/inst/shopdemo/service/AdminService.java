@@ -34,6 +34,23 @@ public class AdminService {
                 .toList();
     }
 
+    /** 어드민: 전체 굿즈 목록 (상태 필터 + 키워드 검색) */
+    @Transactional(readOnly = true)
+    public List<GoodsResponse> getAllGoodsForAdmin(String statusFilter, String keyword) {
+        GoodsStatus status = null;
+        if (statusFilter != null && !statusFilter.isBlank() && !"ALL".equalsIgnoreCase(statusFilter)) {
+            try {
+                status = GoodsStatus.valueOf(statusFilter.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Invalid status: " + statusFilter);
+            }
+        }
+        String kw = keyword == null ? "" : keyword.trim();
+        return goodsRepository.searchForAdmin(status, kw.isEmpty() ? null : kw).stream()
+                .map(goodsService::toResponse)
+                .toList();
+    }
+
     @Transactional
     public GoodsResponse reviewGoods(Long id, AdminReviewRequest request) {
         Goods goods = goodsRepository.findById(id)

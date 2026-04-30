@@ -71,6 +71,36 @@ export default function AdminDashboard() {
         >
           주문 취소 요청 {cancelRequestCount > 0 && `(${cancelRequestCount})`}
         </Link>
+        <Link
+          to="/admin/goods"
+          className="bg-purple-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+        >
+          굿즈 전체 조회
+        </Link>
+        <Link
+          to="/admin/orders"
+          className="bg-gray-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+        >
+          전체 주문 조회
+        </Link>
+        <Link
+          to="/admin/users"
+          className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+        >
+          회원 관리
+        </Link>
+        <Link
+          to="/admin/notices"
+          className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
+        >
+          공지사항 관리
+        </Link>
+        <Link
+          to="/admin/settlements"
+          className="bg-teal-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors"
+        >
+          정산 관리
+        </Link>
       </div>
 
       {/* 데스크탑: 테이블 */}

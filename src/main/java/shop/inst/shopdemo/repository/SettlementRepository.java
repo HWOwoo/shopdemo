@@ -14,4 +14,6 @@ public interface SettlementRepository extends JpaRepository<Settlement, Long> {
     List<Settlement> findByStatusOrderByCreatedAtDesc(SettlementStatus status);
 
     List<Settlement> findAllByOrderByCreatedAtDesc();
+
+    boolean existsBySellerAndStatus(User seller, SettlementStatus status);
 }

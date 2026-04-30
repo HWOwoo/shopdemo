@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axiosClient from '../../api/axiosClient';
 import Spinner from '../../components/ui/Spinner';
 import Toast, { useToast } from '../../components/ui/Toast';
+import { useConfirm } from '../../components/ui/ConfirmModal';
 
 function Row({ label, value }) {
   return (
@@ -18,6 +19,7 @@ export default function AdminCancelRequestsPage() {
   const [selected, setSelected] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const { toast, show, hide } = useToast();
+  const { confirm, ConfirmModal } = useConfirm();
 
   const fetchOrders = () => {
     setLoading(true);
@@ -30,7 +32,7 @@ export default function AdminCancelRequestsPage() {
   useEffect(() => { fetchOrders(); }, []);
 
   const handleApprove = async (orderId) => {
-    if (!confirm('취소 요청을 승인하시겠습니까? 주문이 취소되고 재고가 복구됩니다.')) return;
+    if (!await confirm('취소 요청을 승인하시겠습니까?', '주문이 취소되고 재고가 복구됩니다.')) return;
     setSubmitting(true);
     try {
       await axiosClient.post(`/admin/orders/${orderId}/cancel-approve`);
@@ -45,7 +47,7 @@ export default function AdminCancelRequestsPage() {
   };
 
   const handleReject = async (orderId) => {
-    if (!confirm('취소 요청을 거절하시겠습니까? 주문이 이전 상태로 복구됩니다.')) return;
+    if (!await confirm('취소 요청을 거절하시겠습니까?', '주문이 이전 상태로 복구됩니다.')) return;
     setSubmitting(true);
     try {
       await axiosClient.post(`/admin/orders/${orderId}/cancel-reject`);
@@ -61,6 +63,7 @@ export default function AdminCancelRequestsPage() {
 
   return (
     <div>
+      <ConfirmModal />
       <Toast toast={toast} onClose={hide} />
 
       <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6">주문 취소 요청 관리</h1>

@@ -22,12 +22,15 @@ public class UserPrincipal implements UserDetails {
     private String password;
     private Collection<? extends GrantedAuthority> authorities;
 
+    private boolean active;
+
     public static UserPrincipal from(User user) {
         return UserPrincipal.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .password(user.getPassword())
+                .active(user.getActive() == null || user.getActive())
                 .authorities(List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
                 .build();
     }
@@ -36,11 +39,11 @@ public class UserPrincipal implements UserDetails {
     public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public boolean isAccountNonLocked() { return true; }
+    public boolean isAccountNonLocked() { return active; }
 
     @Override
     public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isEnabled() { return true; }
+    public boolean isEnabled() { return active; }
 }

@@ -4,9 +4,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import shop.inst.shopdemo.dto.auth.AuthResponse;
+import shop.inst.shopdemo.dto.user.AdminUpdateUserRequest;
+import shop.inst.shopdemo.dto.user.AdminUserResponse;
 import shop.inst.shopdemo.dto.user.UpdateProfileRequest;
 import shop.inst.shopdemo.dto.user.UserProfileResponse;
 import shop.inst.shopdemo.entity.User;
+import shop.inst.shopdemo.entity.enums.Role;
+import shop.inst.shopdemo.exception.BadRequestException;
 import shop.inst.shopdemo.exception.ResourceNotFoundException;
 import shop.inst.shopdemo.repository.UserRepository;
 
@@ -57,6 +61,49 @@ public class UserService {
                         .role(u.getRole())
                         .build())
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminUserResponse> getAllUsersForAdmin() {
+        return userRepository.findAll().stream()
+                .map(this::toAdminResponse)
+                .toList();
+    }
+
+    @Transactional
+    public AdminUserResponse adminUpdateUser(Long adminUserId, Long targetUserId, AdminUpdateUserRequest request) {
+        if (adminUserId != null && adminUserId.equals(targetUserId)) {
+            throw new BadRequestException("본인 계정은 수정할 수 없습니다.");
+        }
+        User user = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("회원을 찾을 수 없습니다."));
+        if (request.getRole() != null) {
+            if (user.getRole() == Role.ADMIN) {
+                throw new BadRequestException("관리자 계정의 역할은 변경할 수 없습니다.");
+            }
+            if (request.getRole() == Role.ADMIN) {
+                throw new BadRequestException("관리자 권한은 부여할 수 없습니다.");
+            }
+            user.setRole(request.getRole());
+        }
+        if (request.getActive() != null) {
+            if (user.getRole() == Role.ADMIN && !request.getActive()) {
+                throw new BadRequestException("관리자 계정은 비활성화할 수 없습니다.");
+            }
+            user.setActive(request.getActive());
+        }
+        return toAdminResponse(userRepository.save(user));
+    }
+
+    private AdminUserResponse toAdminResponse(User u) {
+        return AdminUserResponse.builder()
+                .id(u.getId())
+                .username(u.getUsername())
+                .email(u.getEmail())
+                .role(u.getRole())
+                .active(u.getActive() == null || u.getActive())
+                .createdAt(u.getCreatedAt())
+                .build();
     }
 
     private UserProfileResponse toProfileResponse(User user) {

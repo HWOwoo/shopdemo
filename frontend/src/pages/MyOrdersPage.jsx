@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import Spinner from '../components/ui/Spinner';
 import Toast, { useToast } from '../components/ui/Toast';
+import { useConfirm } from '../components/ui/ConfirmModal';
 
 const STATUS = {
   PENDING_PAYMENT:  { label: '입금 대기',     cls: 'bg-yellow-100 text-yellow-700', icon: '⏳' },
@@ -37,21 +38,21 @@ function InfoRow({ label, value }) {
   );
 }
 
-function OrderCard({ order, onConfirmDelivery, onCancel }) {
+function OrderCard({ order, onConfirmDelivery, onCancel, confirm }) {
   const [expanded, setExpanded] = useState(false);
   const [acting, setActing] = useState(false);
   const pt = PURCHASE_TYPE[order.purchaseType] ?? { label: order.purchaseType, icon: '' };
   const address = [order.postalCode, order.address, order.addressDetail].filter(Boolean).join(' ');
 
   const handleConfirmDelivery = async () => {
-    if (!confirm('수령을 확인하시겠습니까?')) return;
+    if (!await confirm('수령을 확인하시겠습니까?')) return;
     setActing(true);
     await onConfirmDelivery(order.id);
     setActing(false);
   };
 
   const handleCancel = async () => {
-    if (!confirm('주문을 취소하시겠습니까?')) return;
+    if (!await confirm('주문을 취소하시겠습니까?')) return;
     setActing(true);
     await onCancel(order.id);
     setActing(false);
@@ -232,6 +233,7 @@ export default function MyOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('ALL');
   const { toast, show, hide } = useToast();
+  const { confirm, ConfirmModal } = useConfirm();
 
   const fetchOrders = () => {
     axiosClient.get('/seller/orders/my')
@@ -275,6 +277,7 @@ export default function MyOrdersPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      <ConfirmModal />
       <Toast toast={toast} onClose={hide} />
 
       <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">구매 내역</h1>
@@ -323,6 +326,7 @@ export default function MyOrdersPage() {
               order={order}
               onConfirmDelivery={handleConfirmDelivery}
               onCancel={handleCancel}
+              confirm={confirm}
             />
           ))}
         </div>

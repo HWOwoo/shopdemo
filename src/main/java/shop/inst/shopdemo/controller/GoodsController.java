@@ -39,10 +39,17 @@ public class GoodsController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "12") int size,
             @RequestParam(defaultValue = "SALE") GoodsType type,
-            @RequestParam(required = false) String keyword
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "latest") String sort
     ) {
         if (size > 100) size = 100;
-        PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Sort sortOption = switch (sort) {
+            case "priceAsc" -> Sort.by("price").ascending();
+            case "priceDesc" -> Sort.by("price").descending();
+            case "deadlineAsc" -> Sort.by("preorderDeadline").ascending();
+            default -> Sort.by("createdAt").descending();
+        };
+        PageRequest pageable = PageRequest.of(page, size, sortOption);
         return ResponseEntity.ok(ApiResponse.success(goodsService.getApprovedGoods(type, keyword, pageable)));
     }
 
@@ -189,6 +196,16 @@ public class GoodsController {
     ) {
         preorderService.confirmPreorder(principal.getUsername(), id);
         return ResponseEntity.ok(ApiResponse.success("생산이 확정되었습니다.", null));
+    }
+
+    /** 생산 취소 (판매자: CLOSED → 신청자 알림) */
+    @PostMapping("/my/{id}/preorder-cancel")
+    public ResponseEntity<ApiResponse<Void>> cancelPreorderProduction(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long id
+    ) {
+        preorderService.cancelPreorder(principal.getUsername(), id);
+        return ResponseEntity.ok(ApiResponse.success("생산이 취소되었습니다.", null));
     }
 
     /** 내 수요조사 신청 목록 (구매자용) */

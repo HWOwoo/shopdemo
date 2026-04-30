@@ -57,6 +57,17 @@ public interface GoodsRepository extends JpaRepository<Goods, Long> {
     @Query("SELECT g FROM Goods g WHERE g.seller = :seller AND g.status = :status ORDER BY g.createdAt DESC")
     List<Goods> findBySellerAndStatus(@Param("seller") User seller, @Param("status") GoodsStatus status);
 
+    /** 어드민 전체 굿즈 조회: 상태 + 키워드(이름/판매자명/카테고리/태그) 필터 */
+    @Query("SELECT g FROM Goods g JOIN FETCH g.seller WHERE " +
+           "(:status IS NULL OR g.status = :status) AND " +
+           "(:keyword IS NULL OR :keyword = '' OR " +
+           " LOWER(g.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           " LOWER(g.seller.username) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           " LOWER(COALESCE(g.category, '')) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           " LOWER(COALESCE(g.tags, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "ORDER BY g.createdAt DESC")
+    List<Goods> searchForAdmin(@Param("status") GoodsStatus status, @Param("keyword") String keyword);
+
     /** 마감일 지난 PREORDER 상품 */
     @Query("SELECT g FROM Goods g WHERE g.status = :status AND g.goodsType = :goodsType " +
            "AND g.preorderDeadline IS NOT NULL AND g.preorderDeadline < :now")

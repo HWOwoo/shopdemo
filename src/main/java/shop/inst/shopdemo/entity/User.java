@@ -44,6 +44,9 @@ public class User {
     private String pixivUrl;
     private String instagramUrl;
 
+    /** 계정 활성 여부 (어드민이 정지 시 false). null은 true로 간주 */
+    private Boolean active;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import Spinner from '../components/ui/Spinner';
 import Toast, { useToast } from '../components/ui/Toast';
+import { useConfirm } from '../components/ui/ConfirmModal';
 
 export default function MyPreordersPage() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const { toast, show, hide } = useToast();
+  const { confirm, ConfirmModal } = useConfirm();
 
   const fetchEntries = () => {
     setLoading(true);
@@ -20,7 +22,7 @@ export default function MyPreordersPage() {
   useEffect(() => { fetchEntries(); }, []);
 
   const handleCancel = async (goodsId) => {
-    if (!confirm('수요조사 신청을 취소하시겠습니까?')) return;
+    if (!await confirm('수요조사 신청을 취소하시겠습니까?')) return;
     try {
       await axiosClient.delete(`/goods/${goodsId}/preorder`);
       show('신청이 취소되었습니다.', 'success');
@@ -34,6 +36,7 @@ export default function MyPreordersPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      <ConfirmModal />
       <Toast toast={toast} onClose={hide} />
 
       <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">내 수요조사 신청</h1>

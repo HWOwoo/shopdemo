@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import shop.inst.shopdemo.dto.common.ApiResponse;
 import shop.inst.shopdemo.dto.review.CreateReviewRequest;
 import shop.inst.shopdemo.dto.review.ReviewResponse;
+import shop.inst.shopdemo.dto.review.ReviewStatsResponse;
 import shop.inst.shopdemo.dto.review.UpdateReviewRequest;
 import shop.inst.shopdemo.security.UserPrincipal;
 import shop.inst.shopdemo.service.ReviewService;
@@ -82,5 +83,13 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.success(
                 reviewService.getReviewsByGoods(goodsId)
         ));
+    }
+
+    /** 특정 상품의 리뷰 통계 (평균/개수/분포) — 공개 */
+    @GetMapping("/goods/{goodsId}/stats")
+    public ResponseEntity<ApiResponse<ReviewStatsResponse>> getGoodsReviewStats(
+            @PathVariable Long goodsId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(reviewService.getStatsByGoods(goodsId)));
     }
 }

@@ -61,6 +61,12 @@ public class GoodsResponse {
     /** 추가 이미지 URL 목록 */
     private List<String> additionalImages;
 
+    /** 평균 평점 (리뷰 없으면 null) */
+    private Double averageRating;
+
+    /** 리뷰 개수 */
+    private Long reviewCount;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
