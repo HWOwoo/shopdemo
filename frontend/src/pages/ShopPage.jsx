@@ -48,30 +48,40 @@ const TAG_COLORS = [
   'from-red-400 to-rose-500',
 ];
 
+// imageUrl이 있으면 실제 상품 사진을, 없으면 imageBg(그라디언트 placeholder)를 사용.
 const BANNERS = [
   {
     id: 1,
-    title: '2026 Valentine\'s Day 한정 굿즈 OPEN',
-    subtitle: '스텔라들의 달~콤한 고백, 받아주실게요?',
-    date: '2026.02.14 ~ 2026.03.14',
-    gradient: 'from-indigo-900 via-purple-900 to-pink-900',
-    emoji: '💝',
+    eyebrow: 'Special',
+    title: "2026 Valentine's Day 한정 굿즈",
+    subtitle: '스텔라들의 달~콤한 고백, 다굿즈에서 가장 먼저 만나보세요.',
+    date: '2026.02.14 — 2026.03.14',
+    cta: '지금 보기',
+    imageUrl: null,
+    imageBg: 'radial-gradient(circle at 30% 30%, #fde68a 0%, #fbcfe8 35%, #c7d2fe 80%)',
+    imageEmoji: '🎁',
   },
   {
     id: 2,
-    title: 'WISHes Valentine\'s Day!',
-    subtitle: '위시스 발렌타인데이 신의상 MD 예약 판매',
-    date: '2026.02.14 ~ 02.28',
-    gradient: 'from-pink-400 via-rose-500 to-pink-700',
-    emoji: '💖',
+    eyebrow: 'Pre-order',
+    title: '위시스 발렌타인데이 신의상 MD',
+    subtitle: '예약 판매 OPEN — 신청자 전원 한정 포카 증정.',
+    date: '2026.02.14 — 02.28',
+    cta: '신청하기',
+    imageUrl: null,
+    imageBg: 'radial-gradient(circle at 70% 30%, #fff1f2 0%, #fbcfe8 40%, #f43f5e 100%)',
+    imageEmoji: '💖',
   },
   {
     id: 3,
-    title: '파스텔 5기 멤버십 키트 OPEN',
+    eyebrow: '신규 입점',
+    title: '파스텔 5기 멤버십 키트',
     subtitle: '스텔라이브 버스, 지금 출발합니다!',
-    date: '2026.02.01',
-    gradient: 'from-red-700 via-red-800 to-red-950',
-    emoji: '🎫',
+    date: '2026.02.01 OPEN',
+    cta: '둘러보기',
+    imageUrl: null,
+    imageBg: 'radial-gradient(circle at 30% 70%, #fee2e2 0%, #fca5a5 40%, #b91c1c 100%)',
+    imageEmoji: '🎫',
   },
 ];
 
@@ -266,53 +276,73 @@ export default function ShopPage() {
         </div>
       )}
 
-      {/* ===== 전역 배너 캐러셀 ===== */}
+      {/* ===== 전역 배너 캐러셀 — split layout ===== */}
       <div className="flex gap-3 mb-5 items-stretch">
-        <div className="hidden lg:block w-44 flex-shrink-0">
+        {/* 이전 배너 미리보기 (데스크탑) */}
+        <div className="hidden lg:block w-40 flex-shrink-0">
           <div
-            className={`h-52 rounded-2xl bg-gradient-to-br ${prevBanner.gradient} p-4 flex flex-col justify-end opacity-60 cursor-pointer hover:opacity-75 transition-opacity`}
+            className="h-52 rounded-2xl overflow-hidden opacity-50 cursor-pointer hover:opacity-70 transition-opacity flex items-center justify-center text-5xl"
+            style={{ background: prevBanner.imageBg }}
             onClick={() => setBannerIdx((bannerIdx - 1 + BANNERS.length) % BANNERS.length)}
           >
-            <p className="text-white text-xs font-semibold line-clamp-2">{prevBanner.title}</p>
+            {prevBanner.imageEmoji}
           </div>
         </div>
 
-        <div className={`flex-1 rounded-2xl bg-gradient-to-br ${currBanner.gradient} p-5 sm:p-7 relative overflow-hidden min-h-40 sm:min-h-52`}>
-          <div className="relative z-10">
-            <p className="text-white/70 text-[10px] sm:text-xs font-medium mb-1 uppercase tracking-widest">SPECIAL</p>
-            <div className="text-3xl sm:text-5xl mb-2 sm:mb-3">{currBanner.emoji}</div>
-            <h2 className="text-white text-base sm:text-xl font-bold mb-1 sm:mb-1.5 leading-snug">{currBanner.title}</h2>
-            <p className="text-white/75 text-xs sm:text-sm mb-1">{currBanner.subtitle}</p>
-            <p className="text-white/55 text-[10px] sm:text-xs">{currBanner.date}</p>
+        {/* 현재 배너 */}
+        <div className="flex-1 rounded-2xl overflow-hidden border border-gray-100 shadow-sm min-h-40 sm:min-h-52 flex relative">
+          {/* 좌측: 텍스트 */}
+          <div className="flex-1 p-5 sm:p-8 flex flex-col justify-center bg-white">
+            <p className="text-[10px] sm:text-xs font-bold text-indigo-500 uppercase tracking-widest mb-2">
+              {currBanner.eyebrow}
+            </p>
+            <h2 className="text-gray-900 text-base sm:text-xl font-bold mb-2 leading-snug">
+              {currBanner.title}
+            </h2>
+            <p className="text-gray-500 text-xs sm:text-sm mb-1">{currBanner.subtitle}</p>
+            <p className="text-gray-400 text-[10px] sm:text-xs mb-4">{currBanner.date}</p>
+            <button className="self-start text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-full transition-colors">
+              {currBanner.cta}
+            </button>
+            {/* 페이지 인디케이터 */}
+            <div className="flex gap-1.5 mt-4">
+              {BANNERS.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setBannerIdx(i)}
+                  className={`h-1.5 rounded-full transition-all ${i === bannerIdx ? 'bg-indigo-600 w-4' : 'bg-gray-300 w-1.5'}`}
+                />
+              ))}
+            </div>
           </div>
-          <div className="absolute bottom-4 right-4 flex items-center gap-1.5">
-            <button
-              onClick={() => setBannerIdx((bannerIdx - 1 + BANNERS.length) % BANNERS.length)}
-              className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/35 text-white text-sm flex items-center justify-center"
-            >‹</button>
-            <span className="text-white/70 text-xs px-1">{bannerIdx + 1} / {BANNERS.length}</span>
-            <button
-              onClick={() => setBannerIdx((bannerIdx + 1) % BANNERS.length)}
-              className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/35 text-white text-sm flex items-center justify-center"
-            >›</button>
-          </div>
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
-            {BANNERS.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setBannerIdx(i)}
-                className={`h-1.5 rounded-full transition-all ${i === bannerIdx ? 'bg-white w-4' : 'bg-white/40 w-1.5'}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="hidden lg:block w-44 flex-shrink-0">
+          {/* 우측: 이미지 슬롯 */}
           <div
-            className={`h-52 rounded-2xl bg-gradient-to-br ${nextBanner.gradient} p-4 flex flex-col justify-end opacity-60 cursor-pointer hover:opacity-75 transition-opacity`}
+            className="w-36 sm:w-52 flex-shrink-0 flex items-center justify-center text-5xl sm:text-7xl"
+            style={{ background: currBanner.imageUrl ? undefined : currBanner.imageBg }}
+          >
+            {currBanner.imageUrl
+              ? <img src={currBanner.imageUrl} alt={currBanner.title} className="w-full h-full object-cover" />
+              : currBanner.imageEmoji}
+          </div>
+          {/* 좌/우 내비게이션 버튼 */}
+          <button
+            onClick={() => setBannerIdx((bannerIdx - 1 + BANNERS.length) % BANNERS.length)}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white shadow border border-gray-100 text-gray-500 hover:text-gray-800 text-sm flex items-center justify-center transition-colors"
+          >‹</button>
+          <button
+            onClick={() => setBannerIdx((bannerIdx + 1) % BANNERS.length)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white shadow border border-gray-100 text-gray-500 hover:text-gray-800 text-sm flex items-center justify-center transition-colors"
+          >›</button>
+        </div>
+
+        {/* 다음 배너 미리보기 (데스크탑) */}
+        <div className="hidden lg:block w-40 flex-shrink-0">
+          <div
+            className="h-52 rounded-2xl overflow-hidden opacity-50 cursor-pointer hover:opacity-70 transition-opacity flex items-center justify-center text-5xl"
+            style={{ background: nextBanner.imageBg }}
             onClick={() => setBannerIdx((bannerIdx + 1) % BANNERS.length)}
           >
-            <p className="text-white text-xs font-semibold line-clamp-2">{nextBanner.title}</p>
+            {nextBanner.imageEmoji}
           </div>
         </div>
       </div>

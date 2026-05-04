@@ -1,5 +1,26 @@
 @import "tailwindcss";
 
+/* ── 브랜드 폰트: NanumSquareRound (나눔스퀘어라운드) ── */
+@font-face {
+  font-family: 'NanumSquareRound';
+  src: url('/fonts/NanumSquareRoundR.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans:
+    'NanumSquareRound',
+    'Pretendard Variable', 'Pretendard',
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR',
+    'Helvetica Neue', Arial, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+html, body { font-family: var(--font-sans); }
+
 /* ── TipTap / ProseMirror 에디터 & 렌더링 공통 스타일 ── */
 .ProseMirror {
   min-height: 220px;

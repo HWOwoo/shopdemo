@@ -24,7 +24,15 @@
       "Bash(find / -name \"javac\" -type f)",
       "Read(//home/nelap1234/**)",
       "Read(//opt/**)",
-      "Read(//mnt/c/Users/nelap1234/**)"
+      "Read(//mnt/c/Users/nelap1234/**)",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(cp \"/home/nelap1234/.claude/projects/-mnt-c-Users-nelap1234-IdeaProjects-shopdemo/79db2861-20f6-4803-b6e7-3610d2aad139/tool-results/webfetch-1777863430926-6xf1qd.bin\" /tmp/design.bin)",
+      "Read(//tmp/**)",
+      "Bash(gunzip -c /tmp/design.bin)",
+      "Bash(mkdir -p /tmp/design_bundle)",
+      "Bash(tar -xf /tmp/design_extracted -C /tmp/design_bundle)",
+      "Bash(mkdir -p /mnt/c/Users/nelap1234/IdeaProjects/shopdemo/frontend/public/fonts)",
+      "Bash(cp /tmp/design_bundle/dagoods-design-system/project/_patch/frontend/public/fonts/NanumSquareRoundR.ttf /mnt/c/Users/nelap1234/IdeaProjects/shopdemo/frontend/public/fonts/NanumSquareRoundR.ttf)"
     ]
   }
 }
